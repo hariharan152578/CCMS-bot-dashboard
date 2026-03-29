@@ -489,21 +489,16 @@ export async function POST(req: Request) {
     const change = payload.entry?.[0]?.changes?.[0]?.value;
     const message = change?.messages?.[0];
 
-    if (!message) {
-      return new NextResponse('OK', { status: 200 });
-    }
+    if (!message) return new NextResponse('OK', { status: 200 });
 
     const phone = message.from;
+    const phoneKey = phone; // ✅ FIXED
     const type = message.type;
-
-    // ✅ FIXED: always use full phone
-    const phoneKey = phone;
 
     let bodyText = '';
     if (type === 'text') bodyText = message.text?.body || '';
 
-    console.log("PHONE:", phone);
-    console.log("MESSAGE:", bodyText);
+    console.log("📩 INPUT:", bodyText);
 
     const config = await getWaConfig();
 
@@ -516,17 +511,19 @@ export async function POST(req: Request) {
       tempData: {},
     };
 
-    let nextStep = state.currentStep;
-
-    console.log("CURRENT STEP:", state.currentStep);
-
-    // RESET
+    // RESET HANDLING
     if (bodyText.toLowerCase() === 'hi' || bodyText.toLowerCase() === 'reset') {
       state.currentStep = 'GREETING';
       state.tempData = {};
     }
 
-    switch (state.currentStep) {
+    // ✅ FIXED FSM CONTROL
+    let currentStep = state.currentStep;
+    let nextStep = currentStep;
+
+    console.log("📍 CURRENT STEP:", currentStep);
+
+    switch (currentStep) {
       case 'GREETING': {
         let msg = '';
         try {
@@ -561,37 +558,24 @@ export async function POST(req: Request) {
           );
           nextStep = 'BOT_MODE_SELECTION';
         }
-
         break;
       }
 
       case 'REGISTRATION_NAME':
         state.tempData.name = bodyText;
-        await sendWhatsAppMessage(
-          phone,
-          'Enter your ward:',
-          config
-        );
+        await sendWhatsAppMessage(phone, 'Enter your ward:', config);
         nextStep = 'REGISTRATION_WARD';
         break;
 
       case 'REGISTRATION_WARD':
         state.tempData.ward = bodyText;
-        await sendWhatsAppMessage(
-          phone,
-          'Enter your address:',
-          config
-        );
+        await sendWhatsAppMessage(phone, 'Enter your address:', config);
         nextStep = 'REGISTRATION_ADDRESS';
         break;
 
       case 'REGISTRATION_ADDRESS':
         state.tempData.address = bodyText;
-        await sendWhatsAppMessage(
-          phone,
-          'Enter pincode:',
-          config
-        );
+        await sendWhatsAppMessage(phone, 'Enter pincode:', config);
         nextStep = 'REGISTRATION_PINCODE';
         break;
 
@@ -632,64 +616,44 @@ export async function POST(req: Request) {
         break;
 
       case 'QUERY_CAPTURE':
-        await sendWhatsAppMessage(
-          phone,
-          'Query received ✅',
-          config
-        );
+        await sendWhatsAppMessage(phone, 'Query received ✅', config);
         nextStep = 'GREETING';
         break;
 
       case 'CATEGORY_SELECTION':
         state.tempData.category = bodyText;
-        await sendWhatsAppMessage(
-          phone,
-          'Describe your issue:',
-          config
-        );
+        await sendWhatsAppMessage(phone, 'Describe your issue:', config);
         nextStep = 'COMPLAINT_DESCRIPTION';
         break;
 
       case 'COMPLAINT_DESCRIPTION':
         state.tempData.description = bodyText;
-        await sendWhatsAppMessage(
-          phone,
-          'Send location or type skip',
-          config
-        );
+        await sendWhatsAppMessage(phone, 'Send location or type skip', config);
         nextStep = 'LOCATION_CAPTURE';
         break;
 
       case 'LOCATION_CAPTURE':
-        await sendWhatsAppMessage(
-          phone,
-          'Upload file or type done',
-          config
-        );
+        await sendWhatsAppMessage(phone, 'Upload file or type done', config);
         nextStep = 'FILE_UPLOAD';
         break;
 
       case 'FILE_UPLOAD':
         if (bodyText.toLowerCase() === 'done') {
-          await sendWhatsAppMessage(
-            phone,
-            'Complaint submitted ✅',
-            config
-          );
+          await sendWhatsAppMessage(phone, 'Complaint submitted ✅', config);
           nextStep = 'GREETING';
           state.tempData = {};
         } else {
-          await sendWhatsAppMessage(
-            phone,
-            'Send more files or type done',
-            config
-          );
+          await sendWhatsAppMessage(phone, 'Send more files or type done', config);
           nextStep = 'FILE_UPLOAD';
         }
         break;
+
+      default:
+        nextStep = 'GREETING';
+        break;
     }
 
-    console.log("NEXT STEP:", nextStep);
+    console.log("➡️ NEXT STEP:", nextStep);
 
     state.currentStep = nextStep;
     state.lastInteraction = Date.now();
@@ -697,6 +661,7 @@ export async function POST(req: Request) {
     await set(stateRef, state);
 
     return new NextResponse('OK', { status: 200 });
+
   } catch (err) {
     console.error(err);
     return new NextResponse('OK', { status: 200 });
