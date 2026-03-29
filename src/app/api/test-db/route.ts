@@ -5,7 +5,7 @@ import { ref, get, set } from 'firebase/database';
 export async function GET() {
   try {
     const phone = "919876543210";
-    const phoneKey = phone.replace(/[^a-zA-Z0-9]/g, '');
+    const phoneKey = phone.length >= 10 ? phone.slice(-10) : phone;
     
     // Simulate a final save trigger
     const currentYear = new Date().getFullYear();
