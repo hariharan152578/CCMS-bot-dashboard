@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { ref, get, set, serverTimestamp } from 'firebase/database';
+import { getMessage, Language } from '@/lib/translations';
 
 async function getWaConfig() {
   const snap = await get(ref(db, 'settings/whatsapp'));
@@ -29,12 +30,18 @@ async function sendWhatsAppMessage(to: string, body: string, config: any) {
     return;
   }
   
+  if (!body || body.trim() === '') {
+    console.warn(`⚠️  REPLY FAILED: Body is empty for ${to}`);
+    return;
+  }
+  
   try {
     const url = `https://graph.facebook.com/v20.0/${config.phoneNumberId}/messages`;
     // Meta requires the phone number without any '+' prefix
     const cleanTo = to.replace(/\+/g, '').trim();
     
     console.log(`📡 Sending Meta Reply to ${cleanTo}...`);
+    console.log(`💬 Body: ${body.substring(0, 50)}${body.length > 50 ? '...' : ''}`);
     
     const res = await fetch(url, {
       method: 'POST',
@@ -118,7 +125,11 @@ export async function POST(req: Request) {
     console.log(`📞 Raw phone from Meta: ${phone}`);
     const type = message.type;
     
-    await saveSystemLog('INFO', `Incoming ${type} from ${phone}`);
+    // Normalize phone key to last 10 digits for Indian users (+91)
+    // This ensures consistency if the phone comes as "91987..." or just "987..."
+    const phoneKey = phone.length >= 10 ? phone.slice(-10) : phone.replace(/[^0-9]/g, ''); 
+    
+    await saveSystemLog('INFO', `Incoming ${type} from ${phone}`, { phoneKey });
 
     let bodyText = '';
     let lat = '';
@@ -136,16 +147,18 @@ export async function POST(req: Request) {
       mediaId = message[type].id;
     }
 
+    console.log(`[TRACE 1] Fetching WhatsApp Config from Firebase...`);
     const config = await getWaConfig();
-
-    const phoneKey = phone.replace(/[^a-zA-Z0-9]/g, ''); // Ensure safe key for RTDB
+    console.log(`[TRACE 2] Config fetched: ${config ? 'YES (keys: ' + Object.keys(config).join(', ') + ')' : 'NO'}`);
 
     console.log(`🤖 Processing message from ${phone}: "${bodyText || type}"`);
 
     // Find bot state
+    console.log(`[TRACE 3] Fetching Bot State from Firebase...`);
     const stateRef = ref(db, `botState/${phoneKey}`);
     const stateSnap = await get(stateRef);
     let state = stateSnap.val() || { phone: phoneKey, currentStep: 'GREETING', tempData: {} };
+    console.log(`[TRACE 4] Bot state fetched: ${JSON.stringify(state)}`);
     
     // Update live state tracking
     state.lastMessage = bodyText || `[${type}]`;
@@ -164,51 +177,64 @@ export async function POST(req: Request) {
 
     switch (state.currentStep) {
       case 'GREETING':
-        console.log(`➡️  GREETING: Sending welcome message to ${phone}`);
-        await saveSystemLog('INFO', `FSM: GREETING for ${phone}`);
-        await sendWhatsAppMessage(phone, 'Hello! Welcome to Local Citizen Support System 🙏\nPlease select your language:\n1. English\n2. Tamil', config);
+        console.log(`[TRACE 5] Stage: GREETING. Calling getMessage('welcome')...`);
+        try {
+          const welcomeMsg = getMessage('welcome');
+          console.log(`[TRACE 6] Message resolved: "${welcomeMsg.substring(0, 20)}..."`);
+          await sendWhatsAppMessage(phone, welcomeMsg, config);
+          console.log(`[TRACE 7] Message sent successfully.`);
+        } catch (e: any) {
+          console.error(`[CRASH] Failed in GREETING:`, e.message);
+          await saveSystemLog('ERROR', `Crash in GREETING: ${e.message}`);
+        }
         nextStep = 'LANGUAGE_SELECTION';
         break;
 
       case 'LANGUAGE_SELECTION':
+        console.log(`[TRACE 5] Stage: LANGUAGE_SELECTION. Input: ${bodyText}`);
         state.tempData.language = bodyText === '2' ? 'ta' : 'en';
-        console.log(`➡️  LANGUAGE_SELECTION: User chose ${state.tempData.language}.`);
-        await saveSystemLog('INFO', `FSM: User chose ${state.tempData.language}`, { phone });
+        const lang = state.tempData.language as Language;
+        console.log(`[TRACE 6] Language set to: ${lang}`);
         
         // Check if user is registered
         const userSnap = await get(ref(db, `users/${phoneKey}`));
         if (!userSnap.exists()) {
-          console.log(`➡️  LANGUAGE_SELECTION: User ${phone} not registered. Moving to REGISTRATION_NAME.`);
-          await sendWhatsAppMessage(phone, 'Please provide your Full Name to register:', config);
+          console.log(`[TRACE 7] User not registered. Sending reg_name...`);
+          await sendWhatsAppMessage(phone, getMessage('registration_name', lang), config);
           nextStep = 'REGISTRATION_NAME';
         } else {
-          console.log(`➡️  LANGUAGE_SELECTION: User ${phone} is already registered. Moving to BOT_MODE_SELECTION.`);
-          await sendWhatsAppMessage(phone, 'How can we help you today?\n1. Raise a Complaint 📢\n2. General Query / Question ❓', config);
+          console.log(`[TRACE 7] User exists. Sending main_menu...`);
+          const registeredUser = userSnap.val();
+          state.tempData.ward = registeredUser.ward || 'N/A';
+          await sendWhatsAppMessage(phone, getMessage('main_menu', lang), config);
           nextStep = 'BOT_MODE_SELECTION';
         }
+        console.log(`[TRACE 8] LANGUAGE_SELECTION logic complete.`);
         break;
 
       case 'BOT_MODE_SELECTION':
+        const modeLang = (state.tempData.language || 'en') as Language;
         if (bodyText === '1') {
           console.log(`➡️  BOT_MODE_SELECTION: User chose COMPLAINT.`);
           await saveSystemLog('INFO', `FSM: User chose COMPLAINT`, { phone });
-          await sendWhatsAppMessage(phone, 'Please select a category:\n1. Water Issue 💧\n2. Electricity ⚡\n3. Road Damage 0x1f6e3\ufe0f\n4. Garbage 🗑️\n5. Other', config);
+          await sendWhatsAppMessage(phone, getMessage('select_category', modeLang), config);
           state.tempData.mode = 'COMPLAINT';
           nextStep = 'CATEGORY_SELECTION';
         } else if (bodyText === '2') {
           console.log(`➡️  BOT_MODE_SELECTION: User chose QUERY.`);
           await saveSystemLog('INFO', `FSM: User chose QUERY`, { phone });
-          await sendWhatsAppMessage(phone, 'Please type your question or query clearly below:', config);
+          await sendWhatsAppMessage(phone, getMessage('describe_issue', modeLang), config);
           state.tempData.mode = 'QUERY';
           nextStep = 'QUERY_CAPTURE';
         } else {
           await saveSystemLog('WARN', `FSM: Invalid Selection in BOT_MODE_SELECTION from ${phone}`, { bodyText });
-          await sendWhatsAppMessage(phone, 'Invalid selection. Please reply with 1 or 2.', config);
+          await sendWhatsAppMessage(phone, getMessage('invalid_selection', modeLang), config);
         }
         break;
 
       case 'QUERY_CAPTURE':
         state.tempData.description = bodyText;
+        const qLang = (state.tempData.language || 'en') as Language;
         // Generate Query ID
         const qYear = new Date().getFullYear();
         const qCounterRef = ref(db, `counters/queries-${qYear}`);
@@ -222,7 +248,7 @@ export async function POST(req: Request) {
           complaintId: queryId,
           userId: phoneKey,
           type: 'Query',
-          language: state.tempData.language || 'en',
+          language: qLang,
           description: bodyText,
           status: 'Pending',
           priority: 'Medium',
@@ -230,124 +256,159 @@ export async function POST(req: Request) {
           history: { [Date.now()]: { status: 'Received', message: 'General Query submitted', updatedAt: Date.now() } }
         });
 
-        await sendWhatsAppMessage(phone, `Thank you! Your query has been received (ID: ${queryId}). We will notify you once an admin replies.`, config);
+        await sendWhatsAppMessage(phone, getMessage('query_received', qLang, { id: queryId }), config);
         nextStep = 'GREETING';
         state.tempData = {};
         break;
 
       case 'REGISTRATION_NAME':
         state.tempData.name = bodyText;
-        await sendWhatsAppMessage(phone, 'Please provide your Area/Address:', config);
+        await sendWhatsAppMessage(phone, getMessage('registration_ward', (state.tempData.language || 'en') as Language), config);
+        nextStep = 'REGISTRATION_WARD';
+        break;
+
+      case 'REGISTRATION_WARD':
+        state.tempData.ward = bodyText;
+        await sendWhatsAppMessage(phone, getMessage('registration_address', (state.tempData.language || 'en') as Language), config);
         nextStep = 'REGISTRATION_ADDRESS';
         break;
 
       case 'REGISTRATION_ADDRESS':
         state.tempData.address = bodyText;
-        await sendWhatsAppMessage(phone, 'Please provide your PIN Code:', config);
+        await sendWhatsAppMessage(phone, getMessage('registration_pincode', (state.tempData.language || 'en') as Language), config);
         nextStep = 'REGISTRATION_PINCODE';
         break;
 
       case 'REGISTRATION_PINCODE':
         state.tempData.pincode = bodyText;
+        const regLang = (state.tempData.language || 'en') as Language;
         
         // Save user
         await set(ref(db, `users/${phoneKey}`), {
           phone: phone,
           name: state.tempData.name,
+          ward: state.tempData.ward,
           address: state.tempData.address,
           pincode: state.tempData.pincode,
-          language: state.tempData.language || 'en',
+          language: regLang,
           createdAt: serverTimestamp()
         });
         
-        await sendWhatsAppMessage(phone, 'Registration complete ✅\n\nHow can we help you today?\n1. Raise a Complaint 📢\n2. General Query / Question ❓', config);
+        await sendWhatsAppMessage(phone, `${getMessage('registration_complete', regLang)}\n\n${getMessage('main_menu', regLang)}`, config);
         nextStep = 'BOT_MODE_SELECTION';
         break;
 
       case 'CATEGORY_SELECTION':
+        const catLang = (state.tempData.language || 'en') as Language;
         const categories = ['Water Issue', 'Electricity', 'Road Damage', 'Garbage', 'Other'];
         const selectionIndex = parseInt(bodyText, 10) - 1;
         
         if (selectionIndex >= 0 && selectionIndex <= 3) {
           state.tempData.category = categories[selectionIndex];
-          await sendWhatsAppMessage(phone, `You selected ${state.tempData.category}. Please describe your issue:`, config);
+          await sendWhatsAppMessage(phone, getMessage('describe_issue', catLang), config);
           nextStep = 'COMPLAINT_DESCRIPTION';
         } else if (bodyText === '5') {
           state.tempData.category = 'Other';
-          await sendWhatsAppMessage(phone, 'Please type your custom category:', config);
+          await sendWhatsAppMessage(phone, getMessage('custom_category', catLang), config);
           nextStep = 'CUSTOM_CATEGORY';
         } else {
-          await sendWhatsAppMessage(phone, 'Invalid selection. Please reply with a number from 1 to 5.', config);
+          await sendWhatsAppMessage(phone, getMessage('invalid_selection', catLang), config);
         }
         break;
         
       case 'CUSTOM_CATEGORY':
         state.tempData.customCategory = bodyText;
-        await sendWhatsAppMessage(phone, 'Please describe your issue:', config);
+        await sendWhatsAppMessage(phone, getMessage('describe_issue', (state.tempData.language || 'en') as Language), config);
         nextStep = 'COMPLAINT_DESCRIPTION';
         break;
 
       case 'COMPLAINT_DESCRIPTION':
         state.tempData.description = bodyText;
-        await sendWhatsAppMessage(phone, 'Please share your current location 📍 (Tap attachment -> Location -> Send)', config);
+        await sendWhatsAppMessage(phone, getMessage('share_location', (state.tempData.language || 'en') as Language), config);
         nextStep = 'LOCATION_CAPTURE';
         break;
 
       case 'LOCATION_CAPTURE':
+        const locLang = (state.tempData.language || 'en') as Language;
         if (lat && lng) {
           state.tempData.location = { lat, lng, address: address || 'Shared Location' };
-          await sendWhatsAppMessage(phone, 'Location received. If you have any image, PDF or video, please upload it now, or type "skip".', config);
+          await sendWhatsAppMessage(phone, getMessage('upload_media', locLang), config);
+          nextStep = 'FILE_UPLOAD';
+        } else if (bodyText.toLowerCase() === 'skip') {
+          state.tempData.location = { lat: '0', lng: '0', address: 'Not provided' };
+          await sendWhatsAppMessage(phone, getMessage('upload_media', locLang), config);
           nextStep = 'FILE_UPLOAD';
         } else {
-          await sendWhatsAppMessage(phone, 'We did not receive a location. Please tap attachment -> Location -> Send, or type "skip" to ignore.', config);
-          if (bodyText.toLowerCase() === 'skip') {
-             state.tempData.location = { lat: '0', lng: '0', address: 'Not provided' };
-             await sendWhatsAppMessage(phone, 'Location skipped. If you have any image, PDF or video, please upload it now, or type "skip".', config);
-             nextStep = 'FILE_UPLOAD';
-          }
+          await sendWhatsAppMessage(phone, getMessage('location_missing', locLang), config);
         }
         break;
 
       case 'FILE_UPLOAD':
-        const mediaArray = [];
-        if (mediaId) mediaArray.push(mediaId); 
+        const fileLang = (state.tempData.language || 'en') as Language;
+        if (!state.tempData.media) state.tempData.media = [];
         
-        // Finalize complaint
-        const submittingUserSnap = await get(ref(db, `users/${phoneKey}`));
-        if (submittingUserSnap.exists()) {
-           const currentYear = new Date().getFullYear();
-           const counterRef = ref(db, `counters/complaints-${currentYear}`);
-           const counterSnap = await get(counterRef);
-           let currentCount = counterSnap.exists() ? counterSnap.val() : 0;
-           currentCount += 1;
-           await set(counterRef, currentCount);
-           
-           const complaintIdStr = `CMP-${currentYear}-${currentCount.toString().padStart(6, '0')}`;
-           const newComplaintRef = ref(db, `complaints/${complaintIdStr}`);
-           
-           console.log(`🔥 SAVING COMPLAINT: ${complaintIdStr} for ${phone}`);
-
-           await set(newComplaintRef, {
-             complaintId: complaintIdStr,
-             userId: phoneKey,
-             type: 'Complaint',
-             language: state.tempData.language || 'en',
-             category: state.tempData.category,
-             customCategory: state.tempData.customCategory || null,
-             description: state.tempData.description,
-             media: mediaArray,
-             location: state.tempData.location,
-             status: 'Pending',
-             priority: 'Medium',
-             history: { [Date.now()]: { status: 'Pending', message: 'Complaint created via WhatsApp', updatedAt: Date.now() } },
-             createdAt: Date.now()
-           });
-           
-           await sendWhatsAppMessage(phone, `Your complaint has been registered successfully ✅\nComplaint ID: ${complaintIdStr}\nWe will notify you of any updates.`, config);
+        if (mediaId) {
+          state.tempData.media.push(mediaId);
+          await sendWhatsAppMessage(phone, getMessage('media_received', fileLang), config);
+          // Don't early return here, we want to save the state!
+          nextStep = 'FILE_UPLOAD'; 
+        } else if (bodyText.toLowerCase() === 'done' || bodyText.toLowerCase() === 'skip') {
+          // Show Summary
+          const summaryStr = getMessage('complaint_summary', fileLang, {
+            category: state.tempData.category,
+            description: state.tempData.description,
+            address: state.tempData.location?.address || 'N/A',
+            ward: state.tempData.ward || 'N/A'
+          });
+          await sendWhatsAppMessage(phone, summaryStr, config);
+          nextStep = 'SUMMARY_CONFIRMATION';
+        } else {
+           await sendWhatsAppMessage(phone, getMessage('upload_media', fileLang), config);
         }
-        
-        nextStep = 'GREETING'; // Reset session
-        state.tempData = {};
+        break;
+
+      case 'SUMMARY_CONFIRMATION':
+        const confirmLang = (state.tempData.language || 'en') as Language;
+        if (bodyText === '1') {
+          // Finalize and Save
+          const currentYear = new Date().getFullYear();
+          const counterRef = ref(db, `counters/complaints-${currentYear}`);
+          const counterSnap = await get(counterRef);
+          let currentCount = counterSnap.exists() ? counterSnap.val() : 0;
+          currentCount += 1;
+          await set(counterRef, currentCount);
+          
+          const complaintIdStr = `CMP-${currentYear}-${currentCount.toString().padStart(6, '0')}`;
+          const newComplaintRef = ref(db, `complaints/${complaintIdStr}`);
+          
+          console.log(`🔥 SAVING COMPLAINT: ${complaintIdStr} for ${phone}`);
+
+          await set(newComplaintRef, {
+            complaintId: complaintIdStr,
+            userId: phoneKey,
+            type: 'Complaint',
+            language: confirmLang,
+            ward: state.tempData.ward || 'N/A',
+            category: state.tempData.category,
+            customCategory: state.tempData.customCategory || null,
+            description: state.tempData.description,
+            media: state.tempData.media || [],
+            location: state.tempData.location,
+            status: 'Pending',
+            priority: 'Medium',
+            history: { [Date.now()]: { status: 'Pending', message: 'Complaint created via WhatsApp', updatedAt: Date.now() } },
+            createdAt: Date.now()
+          });
+          
+          await sendWhatsAppMessage(phone, getMessage('complaint_submitted', confirmLang, { id: complaintIdStr }), config);
+          nextStep = 'GREETING';
+          state.tempData = {};
+        } else if (bodyText === '2') {
+          await sendWhatsAppMessage(phone, getMessage('describe_issue', confirmLang), config);
+          nextStep = 'COMPLAINT_DESCRIPTION';
+        } else {
+          await sendWhatsAppMessage(phone, getMessage('invalid_selection', confirmLang), config);
+        }
         break;
 
       default:
