@@ -34,7 +34,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ success: true, complaintId: complaintIdStr });
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -125,7 +125,7 @@ export default function AdminDashboard() {
             <p className="text-xs text-gray-500 mt-2 font-medium">Number | -2 Resolve time vs target</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 relative overflow-hidden bg-gray-50/50">
+          <div className="rounded-lg shadow-sm border border-gray-200 p-5 relative overflow-hidden bg-gray-50/50">
             <h3 className="text-xs font-bold tracking-wider text-gray-800 uppercase mb-2 flex items-center gap-1">
                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Live Bot Feed
             </h3>
