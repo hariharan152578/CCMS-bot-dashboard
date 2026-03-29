@@ -8,9 +8,6 @@ async function getWaConfig() {
   return snap.exists() ? snap.val() : null;
 }
 
-/**
- * Saves a diagnostic log to Firebase for admin visibility.
- */
 async function saveSystemLog(type: 'INFO' | 'SUCCESS' | 'ERROR' | 'WARN', message: string, detail?: any) {
   try {
     const logRef = ref(db, `systemLogs/${Date.now()}`);
@@ -25,28 +22,16 @@ async function saveSystemLog(type: 'INFO' | 'SUCCESS' | 'ERROR' | 'WARN', messag
   }
 }
 
-/**
- * Sends a message via Meta WhatsApp Cloud API.
- */
 async function sendWhatsAppMessage(to: string, body: string, config: any) {
-  if (!config || !config.accessToken || !config.phoneNumberId) {
-    const msg = `WhatsApp API credentials missing in Firebase Settings!`;
-    console.warn(`⚠️  REPLY FAILED: ${msg}`);
-    await saveSystemLog('ERROR', msg, { to, body });
+  if (!config?.accessToken || !config?.phoneNumberId) {
+    await saveSystemLog('ERROR', 'WhatsApp API credentials missing in Firebase Settings!', { to, body });
     return;
   }
-  
-  if (!body || body.trim() === '') {
-    console.warn(`⚠️  REPLY FAILED: Body is empty for ${to}`);
-    return;
-  }
+  if (!body || body.trim() === '') return;
   
   try {
     const url = `https://graph.facebook.com/v20.0/${config.phoneNumberId}/messages`;
-    // Meta requires the phone number without any '+' prefix or special characters
     const cleanTo = to.replace(/\D/g, '').trim();
-    
-    console.log(`📡 Sending Meta Reply to ${cleanTo}...`);
     
     const res = await fetch(url, {
       method: 'POST',
@@ -63,83 +48,71 @@ async function sendWhatsAppMessage(to: string, body: string, config: any) {
     });
     
     if (res.ok) {
-        console.log(`✅ SUCCESS: Message delivered to Meta for ${cleanTo}`);
         await saveSystemLog('SUCCESS', `Message sent to ${cleanTo}`, { body });
     } else {
         const errorJson = await res.json();
-        console.error('❌ META API REJECTED MESSAGE:', JSON.stringify(errorJson, null, 2));
-        
-        // Specific user-friendly error for token expiration
         let errorMsg = `Meta API Rejected message to ${cleanTo}`;
-        if (errorJson.error?.code === 190) {
-            errorMsg = "ACTION REQUIRED: WhatsApp Access Token has expired. Please update it in System Settings.";
-        }
+        if (errorJson.error?.code === 190) errorMsg = "ACTION REQUIRED: Token Expired. Please update in Settings.";
         await saveSystemLog('ERROR', errorMsg, errorJson);
     }
   } catch (error: any) {
-    console.error('❌ Network Error while sending message:', error);
     await saveSystemLog('ERROR', 'Network Error sending message', { error: error.message });
   }
 }
 
-// Meta Webhook Verification (GET Request)
+// GET for Meta Verification
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const mode = url.searchParams.get('hub.mode');
   const token = url.searchParams.get('hub.verify_token');
   const challenge = url.searchParams.get('hub.challenge');
-
   const config = await getWaConfig();
 
   if (mode === 'subscribe' && token === config?.verifyToken) {
-    console.log('✅ Webhook verified by Meta Successfully!');
     return new NextResponse(challenge, { status: 200 });
-  } else {
-    console.error('❌ Webhook Verification Failed', { mode, token, expectedToken: config?.verifyToken });
-    return new NextResponse('Forbidden', { status: 403 });
   }
+  return new NextResponse('Forbidden', { status: 403 });
 }
 
-// Meta Webhook Event Handler (POST Request)
+// POST for WhatsApp Events
 export async function POST(req: Request) {
   try {
     const payload = await req.json();
-    
-    // Safety check for Meta's structure
-    if (payload.object !== 'whatsapp_business_account') {
-       return new NextResponse('Not a WhatsApp Event', { status: 200 });
-    }
+    if (payload.object !== 'whatsapp_business_account') return new NextResponse('OK', { status: 200 });
 
     const entry = payload.entry?.[0];
     const changes = entry?.changes?.[0]?.value;
-    
-    // Ignore status updates (read/delivered icons)
-    if (!changes || !changes.messages || !changes.messages[0]) {
-      return new NextResponse('OK', { status: 200 });
-    }
+    if (!changes || !changes.messages || !changes.messages[0]) return new NextResponse('OK', { status: 200 });
 
     const message = changes.messages[0];
-    const phone = message.from; // e.g., "918870295336"
+    const phone = message.from; 
     const type = message.type;
-    
-    // ✅ Standardization: Use last 10 digits as the unique key for Indian numbers
     const phoneKey = phone.length >= 10 ? phone.slice(-10) : phone; 
     
-    await saveSystemLog('INFO', `Incoming ${type} from ${phone}`, { phoneKey });
-
     let bodyText = '';
-    if (type === 'text') bodyText = message.text?.body || '';
+    let lat = '';
+    let lng = '';
+    let address = '';
+    let mediaId = '';
+
+    if (type === 'text') {
+      bodyText = message.text?.body || '';
+    } else if (type === 'location') {
+      lat = message.location?.latitude?.toString() || '';
+      lng = message.location?.longitude?.toString() || '';
+      address = message.location?.address || 'Shared Meta Location';
+    } else if (['image', 'video', 'document'].includes(type)) {
+      mediaId = message[type]?.id || '';
+    }
+
+    await saveSystemLog('INFO', `Incoming ${type} from ${phone}`, { phoneKey, bodyText, type });
 
     const config = await getWaConfig();
-
-    // Fetch or Initialize Bot State
     const stateRef = ref(db, `botState/${phoneKey}`);
     const stateSnap = await get(stateRef);
     let state = stateSnap.val() || { phone: phoneKey, currentStep: 'GREETING', tempData: {} };
     
-    console.log(`📍 Current Step for ${phoneKey}: ${state.currentStep} -> Input: "${bodyText}"`);
-
-    // GREETING/RESET triggers
+    // GREETING/RESET
     if (bodyText.toLowerCase() === 'reset' || bodyText.toLowerCase() === 'hi') {
       state.currentStep = 'GREETING';
       state.tempData = {};
@@ -148,7 +121,7 @@ export async function POST(req: Request) {
     let nextStep = state.currentStep;
     let responseBody = '';
 
-    // --- FSM SWITCH ---
+    // FSM
     switch (state.currentStep) {
       case 'GREETING':
         responseBody = getMessage('welcome');
@@ -158,16 +131,14 @@ export async function POST(req: Request) {
       case 'LANGUAGE_SELECTION':
         const lang: Language = bodyText === '2' ? 'ta' : 'en';
         state.tempData.language = lang;
-        
-        // Re-check registration to populate profile data
         const userSnap = await get(ref(db, `users/${phoneKey}`));
         if (!userSnap.exists()) {
           responseBody = getMessage('registration_name', lang);
           nextStep = 'REGISTRATION_NAME';
         } else {
-          const registeredUser = userSnap.val();
-          state.tempData.ward = registeredUser.ward || 'N/A';
-          state.tempData.name = registeredUser.name || 'Citizen';
+          const u = userSnap.val();
+          state.tempData.ward = u.ward || 'N/A';
+          state.tempData.name = u.name || 'Citizen';
           responseBody = getMessage('main_menu', lang);
           nextStep = 'BOT_MODE_SELECTION';
         }
@@ -209,25 +180,29 @@ export async function POST(req: Request) {
       case 'REGISTRATION_PINCODE':
         const rLang = (state.tempData.language || 'en') as Language;
         state.tempData.pincode = bodyText;
-        
-        // Persist new user profile
-        await set(ref(db, `users/${phoneKey}`), {
-          phone: phone,
-          ...state.tempData,
-          createdAt: serverTimestamp()
-        });
-        
+        await set(ref(db, `users/${phoneKey}`), { phone, ...state.tempData, createdAt: serverTimestamp() });
         responseBody = getMessage('registration_complete', rLang) + '\n\n' + getMessage('main_menu', rLang);
         nextStep = 'BOT_MODE_SELECTION';
         break;
 
       case 'CATEGORY_SELECTION':
         const catLang = (state.tempData.language || 'en') as Language;
-        const categories = ['Water Issue', 'Electricity', 'Road Damage', 'Garbage', 'Other'];
+        const cats = ['Water Issue', 'Electricity', 'Road Damage', 'Garbage', 'Other'];
         const idx = parseInt(bodyText, 10) - 1;
-        state.tempData.category = (idx >= 0 && idx < categories.length) ? categories[idx] : 'Other';
-        
-        responseBody = getMessage('describe_issue', catLang);
+        state.tempData.category = (idx >= 0 && idx < 4) ? cats[idx] : 'Other';
+        if (bodyText === '5') {
+            responseBody = getMessage('custom_category', catLang);
+            nextStep = 'CUSTOM_CATEGORY';
+        } else {
+            responseBody = getMessage('describe_issue', catLang);
+            nextStep = 'COMPLAINT_DESCRIPTION';
+        }
+        break;
+
+      case 'CUSTOM_CATEGORY':
+        state.tempData.customCategory = bodyText;
+        state.tempData.category = 'Other';
+        responseBody = getMessage('describe_issue', (state.tempData.language || 'en') as Language);
         nextStep = 'COMPLAINT_DESCRIPTION';
         break;
 
@@ -238,32 +213,120 @@ export async function POST(req: Request) {
         break;
 
       case 'LOCATION_CAPTURE':
-        // Simplified for text-only debugging, but handles 'skip'
         const lLang = (state.tempData.language || 'en') as Language;
-        responseBody = getMessage('upload_media', lLang);
-        nextStep = 'FILE_UPLOAD';
+        if (lat && lng) {
+          state.tempData.location = { lat, lng, address: address || 'Shared Location' };
+          responseBody = getMessage('upload_media', lLang);
+          nextStep = 'FILE_UPLOAD';
+        } else if (bodyText.toLowerCase() === 'skip') {
+          state.tempData.location = { lat: '0', lng: '0', address: 'Not provided' };
+          responseBody = getMessage('upload_media', lLang);
+          nextStep = 'FILE_UPLOAD';
+        } else {
+          responseBody = getMessage('location_missing', lLang);
+        }
+        break;
+
+      case 'FILE_UPLOAD':
+        const fLang = (state.tempData.language || 'en') as Language;
+        if (!state.tempData.media) state.tempData.media = [];
+        if (mediaId) {
+          state.tempData.media.push(mediaId);
+          responseBody = getMessage('media_received', fLang);
+          nextStep = 'FILE_UPLOAD';
+        } else if (bodyText.toLowerCase() === 'done' || bodyText.toLowerCase() === 'skip') {
+          responseBody = getMessage('complaint_summary', fLang, {
+            category: state.tempData.category,
+            description: state.tempData.description,
+            address: state.tempData.location?.address || 'N/A',
+            ward: state.tempData.ward || 'N/A'
+          });
+          nextStep = 'SUMMARY_CONFIRMATION';
+        } else {
+          responseBody = getMessage('upload_media', fLang);
+        }
+        break;
+
+      case 'SUMMARY_CONFIRMATION':
+        const cLang = (state.tempData.language || 'en') as Language;
+        if (bodyText === '1') {
+          // --- FINALIZE COMPLAINT ---
+          const year = new Date().getFullYear();
+          const counterRef = ref(db, `counters/complaints-${year}`);
+          const cSnap = await get(counterRef);
+          let count = cSnap.exists() ? cSnap.val() : 0;
+          count += 1;
+          await set(counterRef, count);
+          
+          const id = `CMP-${year}-${count.toString().padStart(6, '0')}`;
+          await set(ref(db, `complaints/${id}`), {
+            complaintId: id,
+            userId: phoneKey,
+            type: 'Complaint',
+            language: cLang,
+            ward: state.tempData.ward || 'N/A',
+            category: state.tempData.category,
+            customCategory: state.tempData.customCategory || null,
+            description: state.tempData.description,
+            media: state.tempData.media || [],
+            location: state.tempData.location,
+            status: 'Pending',
+            priority: 'Medium',
+            history: { [Date.now()]: { status: 'Pending', message: 'Complaint created via WhatsApp', updatedAt: Date.now() } },
+            createdAt: Date.now()
+          });
+          
+          responseBody = getMessage('complaint_submitted', cLang, { id });
+          nextStep = 'GREETING';
+          state.tempData = {};
+        } else if (bodyText === '2') {
+          responseBody = getMessage('describe_issue', cLang);
+          nextStep = 'COMPLAINT_DESCRIPTION';
+        } else {
+          responseBody = getMessage('invalid_selection', cLang);
+        }
+        break;
+
+      case 'QUERY_CAPTURE':
+        const qLang = (state.tempData.language || 'en') as Language;
+        const qYear = new Date().getFullYear();
+        const qRef = ref(db, `counters/queries-${qYear}`);
+        const qSnap = await get(qRef);
+        let qCount = qSnap.exists() ? qSnap.val() : 0;
+        qCount += 1;
+        await set(qRef, qCount);
+        
+        const qId = `QRY-${qYear}-${qCount.toString().padStart(6, '0')}`;
+        await set(ref(db, `complaints/${qId}`), {
+          complaintId: qId,
+          userId: phoneKey,
+          type: 'Query',
+          language: qLang,
+          description: bodyText,
+          status: 'Pending',
+          priority: 'Medium',
+          createdAt: Date.now(),
+          history: { [Date.now()]: { status: 'Received', message: 'Query received via WhatsApp', updatedAt: Date.now() } }
+        });
+        
+        responseBody = getMessage('query_received', qLang, { id: qId });
+        nextStep = 'GREETING';
+        state.tempData = {};
         break;
 
       default:
-        responseBody = 'Sorry, the session was interrupted. Type "hi" to start again.';
         nextStep = 'GREETING';
         break;
     }
 
-    // ✅ ROBUST PROGRESSION: Save state FIRST to ensure we don't get stuck in loops
     state.currentStep = nextStep;
     state.lastInteraction = Date.now();
     await set(stateRef, state);
 
-    // Send the response message via Meta API
-    if (responseBody) {
-        await sendWhatsAppMessage(phone, responseBody, config);
-    }
-
-    return new NextResponse('EVENT_RECEIVED', { status: 200 });
+    if (responseBody) await sendWhatsAppMessage(phone, responseBody, config);
+    return new NextResponse('OK', { status: 200 });
   } catch (error) {
-    console.error('Webhook payload error:', error);
-    // Always return 200 to Meta so they stop retrying failed events
+    console.error('Webhook Error:', error);
     return new NextResponse('OK', { status: 200 });
   }
 }
