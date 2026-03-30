@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, List, Users, BarChart2, Settings, Landmark, Search, Bell, User, X, Terminal, Clock, MessageSquare } from 'lucide-react';
+import { Home, List, Users, BarChart2, Settings, Landmark, Search, Bell, User, X, Terminal, Clock, MessageSquare, Menu } from 'lucide-react';
 import { ReactNode, useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { ref, onValue, query, limitToLast, orderByChild } from 'firebase/database';
@@ -10,6 +10,7 @@ import { ref, onValue, query, limitToLast, orderByChild } from 'firebase/databas
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [lastReadTimestamp, setLastReadTimestamp] = useState<number>(Date.now());
   const [mounted, setMounted] = useState(false);
@@ -61,55 +62,89 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     { name: 'System Settings', href: '/admin/settings', icon: Settings }
   ];
 
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-50 text-gray-900 font-sans relative overflow-hidden">
+  return (    <div className="flex flex-col min-h-screen bg-gray-50 text-gray-900 font-sans relative overflow-hidden">
       
       {/* Top Global Header */}
-      <header className="h-[72px] bg-white border-b border-gray-200 flex items-center px-6 shrink-0 z-10 w-full relative">
-        <div className="w-64 shrink-0 flex items-center text-gray-800">
+      <header className="h-[72px] bg-white border-b border-gray-200 flex items-center px-4 md:px-6 shrink-0 z-50 w-full sticky top-0 shadow-sm">
+        <div className="flex items-center text-gray-800 w-auto lg:w-64">
+          {/* Hamburger - Mobile only */}
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="mr-3 p-2 hover:bg-gray-100 rounded-lg lg:hidden transition-colors"
+          >
+            <Menu className="w-6 h-6 text-gray-600" />
+          </button>
           <Landmark className="w-6 h-6 text-red-600 mr-2" />
-          <span className="font-bold text-lg tracking-tight">CCMS<span className="font-normal text-gray-500 ml-1">| Citizen Command</span></span>
+          <span className="font-bold text-lg tracking-tight hidden sm:inline-block uppercase">CCMS<span className="font-normal text-gray-500 ml-1">| Citizen Command</span></span>
+          <span className="font-bold text-lg tracking-tight sm:hidden text-red-600">CCMS</span>
         </div>
-        <div className="flex-1 flex justify-center">
-          <div className="bg-red-50 text-red-800 text-[10px] font-bold tracking-widest px-4 py-1.5 rounded-full flex items-center shadow-sm border border-red-100 uppercase">
-            <span className="w-2 h-2 rounded-full bg-red-600 mr-2 animate-pulse"></span>
-            Real-Time Engine Active
+        
+        <div className="flex-1 flex justify-center px-4">
+          <div className="bg-red-50 text-red-800 text-[9px] sm:text-[10px] font-bold tracking-widest px-3 sm:px-4 py-1.5 rounded-full flex items-center shadow-sm border border-red-100 uppercase truncate max-w-[150px] sm:max-w-none">
+            <span className="w-2 h-2 shrink-0 rounded-full bg-red-600 mr-2 animate-pulse"></span>
+            <span className="truncate">Real-Time Engine Active</span>
           </div>
         </div>
-        <div className="flex items-center gap-6 shrink-0">
-          <div className="relative hidden md:block">
+
+        <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+          <div className="relative hidden lg:block">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input type="text" placeholder="Omni Search" className="pl-9 pr-4 py-1.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all w-64" />
           </div>
           
           {/* Notification Bell */}
-          <div className="relative cursor-pointer group" onClick={() => setIsNotifOpen(true)}>
+          <div className="relative cursor-pointer group p-1.5 sm:p-0" onClick={() => setIsNotifOpen(true)}>
             <Bell className={`w-5 h-5 transition-colors ${unreadCount > 0 ? 'text-red-600 animate-bounce' : 'text-gray-400 hover:text-gray-900'}`} />
             {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-black text-[9px] font-bold text-white ring-2 ring-white">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-black text-[9px] font-bold text-white ring-2 ring-white">
                 {unreadCount}
               </span>
             )}
           </div>
           
-          <div className="flex items-center gap-3 cursor-pointer border-l pl-6 border-gray-100">
-            <div className="flex flex-col items-end mr-1">
-               <span className="text-xs font-bold text-gray-900">ADMIN</span>
-               <span className="text-[9px] font-bold text-green-600 uppercase tracking-tighter">System Overseer</span>
+          <div className="flex items-center gap-3 cursor-pointer border-l pl-3 sm:pl-6 border-gray-100 h-8">
+            <div className="hidden sm:flex flex-col items-end mr-1">
+               <span className="text-xs font-bold text-gray-900 leading-none">ADMIN</span>
+               <span className="text-[9px] font-bold text-green-600 uppercase tracking-tighter mt-0.5">System Overseer</span>
             </div>
-            <div className="w-9 h-9 rounded-xl bg-gray-900 flex items-center justify-center text-white shadow-lg border-2 border-white">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-900 flex items-center justify-center text-white shadow-lg border-2 border-white shrink-0">
               <User className="w-4 h-4" />
             </div>
           </div>
         </div>
       </header>
 
+
       {/* Below Header container */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         
+        {/* Mobile Sidebar Backdrop */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[55] lg:hidden animate-in fade-in duration-300"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
         {/* Sidebar */}
-        <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto">
-          <nav className="py-8">
+        <aside className={`fixed inset-y-0 left-0 z-[60] w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto transform transition-transform duration-500 ease-in-out lg:relative lg:translate-x-0 lg:z-auto ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}>
+          {/* Mobile Sidebar Header */}
+          <div className="lg:hidden p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+             <div className="flex items-center text-gray-800">
+               <Landmark className="w-6 h-6 text-red-600 mr-2" />
+               <span className="font-bold text-lg tracking-tight">CCMS</span>
+             </div>
+             <button 
+               onClick={() => setIsSidebarOpen(false)}
+               className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all"
+             >
+               <X className="w-5 h-5" />
+             </button>
+          </div>
+
+          <nav className="py-4 lg:py-8">
             <ul className="space-y-1">
               {navItems.map((item) => {
                 const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
@@ -117,6 +152,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   <li key={item.name}>
                     <Link 
                       href={item.href} 
+                      onClick={() => setIsSidebarOpen(false)}
                       className={`flex items-center gap-3 px-6 py-3.5 border-l-4 transition-all font-bold text-sm ${
                         isActive 
                           ? 'bg-red-50 text-red-700 border-red-600' 
@@ -134,7 +170,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </aside>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto bg-[#F9FAFC] p-8 lg:p-10 relative">
+        <main className="flex-1 overflow-auto bg-[#F9FAFC] p-4 sm:p-6 lg:p-10 relative">
           {children}
         </main>
       </div>
@@ -149,7 +185,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       {/* Notification Drawer Panel */}
       <div 
-        className={`fixed inset-y-0 right-0 z-50 w-[420px] bg-white shadow-2xl transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col border-l border-gray-100 ${
+        className={`fixed inset-y-0 right-0 z-[100] w-full sm:w-[420px] bg-white shadow-2xl transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col border-l border-gray-100 ${
           isNotifOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

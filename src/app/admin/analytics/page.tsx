@@ -96,17 +96,17 @@ export default function AnalyticsPage() {
     <div className="flex flex-col h-full space-y-4">
       
       {/* Container */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 overflow-hidden flex-1 flex flex-col">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-8 overflow-hidden flex-1 flex flex-col">
         
-        <header className="mb-8 flex justify-between items-end">
+        <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
            <div>
              <h2 className="text-xl font-bold text-gray-800 tracking-tight flex items-center gap-2">
                 <PieIcon className="w-6 h-6 text-red-600"/>
-                Citizen Engagement Portal <span className="text-gray-400 font-normal">Analytics</span>
+                Citizen Engagement Portal <span className="text-gray-400 font-normal hidden xs:inline">Analytics</span>
              </h2>
-             <p className="text-gray-400 text-xs font-bold mt-1 uppercase tracking-wider">Live Database Sync active as of {new Date().toLocaleTimeString()}</p>
+             <p className="text-gray-400 text-[10px] sm:text-xs font-bold mt-1 uppercase tracking-wider">Live Database Sync active as of {new Date().toLocaleTimeString()}</p>
            </div>
-           <div className="flex gap-2">
+           <div className="flex gap-2 items-center">
               <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
               <span className="text-[10px] font-bold text-green-600 uppercase">Live Metrics</span>
            </div>
@@ -158,7 +158,7 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 flex-1 overflow-hidden">
            
            {/* Area Chart */}
-           <div className="col-span-1 border border-gray-100 rounded-3xl p-8 bg-white shadow-sm flex flex-col">
+           <div className="col-span-1 border border-gray-100 rounded-3xl p-4 sm:p-8 bg-white shadow-sm flex flex-col">
               <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-6 border-b border-gray-50 pb-3">Incident Velocity (Past 7 Days)</h3>
               <div className="flex-1 min-h-[250px]">
                  <ResponsiveContainer width="100%" height="100%">
@@ -179,7 +179,7 @@ export default function AnalyticsPage() {
            </div>
 
            {/* Bar Chart */}
-           <div className="col-span-1 border border-gray-100 rounded-3xl p-8 bg-white shadow-sm flex flex-col">
+           <div className="col-span-1 border border-gray-100 rounded-3xl p-4 sm:p-8 bg-white shadow-sm flex flex-col">
               <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-8 border-b border-gray-50 pb-4">Incident Breakdown by Status</h3>
               <div className="flex-1 min-h-[250px]">
                  <ResponsiveContainer width="100%" height="100%">
@@ -196,7 +196,7 @@ export default function AnalyticsPage() {
            </div>
 
            {/* Dynamic Category List (Replacing SLA Table) */}
-           <div className="col-span-1 border border-gray-100 rounded-3xl p-8 bg-white shadow-sm flex flex-col">
+           <div className="col-span-1 border border-gray-100 rounded-3xl p-4 sm:p-8 bg-white shadow-sm flex flex-col">
               <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-8 border-b border-gray-50 pb-4">Categorical Distribution</h3>
               <div className="flex-1 overflow-auto pr-2 custom-scrollbar">
                  <div className="space-y-4">

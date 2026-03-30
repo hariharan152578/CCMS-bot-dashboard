@@ -73,23 +73,23 @@ export default function AnnouncementsPage() {
     <div className="max-w-5xl mx-auto space-y-6">
       
       {/* Header section with Stats */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 px-1">
         <div>
-           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-             <Bell className="w-6 h-6 text-red-600" /> WhatsApp Broadcast Center
+           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+             <Bell className="w-6 h-6 text-red-600" /> Broadcast Center
            </h1>
-           <p className="text-sm text-gray-500 mt-1 italic">
-             Directly reach every citizen in your database with official alerts.
+           <p className="text-[11px] sm:text-sm text-gray-500 mt-1 uppercase font-bold tracking-tight">
+             Directly reach every citizen in your database via WhatsApp.
            </p>
         </div>
         
-        <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm flex items-center gap-3">
-           <div className="w-10 h-10 bg-red-50 text-red-600 rounded-full flex items-center justify-center">
-              <Users className="w-5 h-5" />
+        <div className="bg-white px-5 py-3 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4 group hover:border-red-200 transition-all">
+           <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <Users className="w-6 h-6" />
            </div>
            <div>
-              <span className="text-xs font-bold text-gray-400 block uppercase tracking-wider">Total Recipients</span>
-              <span className="text-lg font-bold text-gray-900 tracking-tight">{userCount} Registered Citizens</span>
+              <span className="text-[10px] font-bold text-gray-400 block uppercase tracking-widest leading-none mb-1">Total Recipients</span>
+              <span className="text-xl font-bold text-gray-900 tracking-tight">{userCount} <span className="font-normal text-gray-500">Registered</span></span>
            </div>
         </div>
       </div>
@@ -98,62 +98,62 @@ export default function AnnouncementsPage() {
         
         {/* Left: Compose Message */}
         <div className="lg:col-span-2 space-y-6">
-           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col h-full">
               <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                 <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-wide">
+                 <h2 className="text-xs font-bold text-gray-500 flex items-center gap-2 uppercase tracking-widest">
                    <Send className="w-4 h-4 text-red-600" /> Compose New Announcement
                  </h2>
               </div>
               
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-6 flex-1">
                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Subject / Title (Optional)</label>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Subject / Title (Optional)</label>
                     <input 
                       type="text" 
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder="e.g. Water Supply Interruption / Weather Alert"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 transition-all font-medium"
+                      className="w-full bg-gray-50/50 border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all font-bold"
                     />
                  </div>
 
                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Announcement Message</label>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Announcement Message</label>
                     <textarea 
                       rows={6}
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Type the message you want to send to everyone via WhatsApp..."
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 transition-all leading-relaxed resize-none"
+                      className="w-full bg-gray-50/50 border border-gray-200 rounded-lg p-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all leading-relaxed resize-none font-medium h-[200px]"
                     />
                  </div>
 
                  {error && (
-                   <div className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-lg flex items-center gap-3 text-sm animate-in fade-in zoom-in-95">
-                      <AlertCircle className="w-5 h-5" /> {error}
+                   <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-lg flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider animate-in fade-in zoom-in-95">
+                      <AlertCircle className="w-4 h-4" /> {error}
                    </div>
                  )}
 
                  {success && (
-                   <div className="bg-green-50 border border-green-100 text-green-700 p-3 rounded-lg flex items-center gap-3 text-sm animate-in fade-in zoom-in-95">
-                      <CheckCircle className="w-5 h-5 transition-transform scale-110" /> {success}
+                   <div className="bg-green-50 border border-green-100 text-green-700 px-4 py-3 rounded-lg flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider animate-in fade-in zoom-in-95">
+                      <CheckCircle className="w-4 h-4" /> {success}
                    </div>
                  )}
 
                  <button 
                    disabled={loading || !message}
                    onClick={handleBroadcast}
-                   className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-3 rounded-lg transition-all shadow-md flex items-center justify-center gap-2 group"
+                   className="w-full bg-black hover:bg-red-700 disabled:opacity-30 text-white font-black py-4 rounded-xl transition-all shadow-xl flex items-center justify-center gap-3 group uppercase tracking-widest text-xs"
                  >
                    {loading ? (
                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        SENDING BROADCAST...
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        DISPATCHING BROADCAST...
                      </>
                    ) : (
                      <>
-                        <Send className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                        SEND TO ALL CITIZENS
+                        <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                        SEND TO ALL REGISTERED CITIZENS
                      </>
                    )}
                  </button>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { ref, onValue, get } from 'firebase/database';
-import { Droplet, Zap, Route, Trash2, X, CheckCircle } from 'lucide-react';
+import { Droplet, Zap, Route, Trash2, X, CheckCircle, ExternalLink } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import ActionPanel from '@/components/ActionPanel';
 import Image from 'next/image';
@@ -68,8 +68,8 @@ export default function AdminDashboard() {
       
       {/* Welcome & KPIs */}
       <div className="mb-2">
-        <h1 className="text-xl font-bold text-gray-900 mb-4">
-          Good Morning, Admin. <span className="font-normal text-gray-600">The city is currently reporting <span className="text-red-700 font-bold">[{total}]</span> active incidents.</span>
+        <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 leading-tight">
+          Good Morning, Admin. <span className="font-normal text-gray-600 sm:block lg:inline">The city is currently reporting <span className="text-red-700 font-bold">[{total}]</span> active incidents.</span>
         </h1>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -114,7 +114,7 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 relative overflow-hidden group hover:border-green-200 transition-all">
             <h3 className="text-xs font-bold tracking-wider text-gray-500 uppercase mb-2">Resolution Efficiency</h3>
             <div className="flex items-end justify-between">
-               <span className="text-4xl font-extrabold text-gray-900">
+               <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">
                   {total > 0 ? ((resolved / total) * 100).toFixed(0) : 0}%
                </span>
                <div className="w-10 h-10 bg-green-50 text-green-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -129,11 +129,11 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Master-Detail Area */}
-      <div className="flex-1 flex gap-4 min-h-[600px] overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-4 flex-1 overflow-hidden min-h-0 lg:min-h-[600px]">
         
         {/* Left: Matrix (Table List) */}
-        <div className="w-3/5 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+        <div className="w-full lg:w-3/5 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-[400px] lg:min-h-0">
+          <div className="px-5 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center sm:flex-row flex-col gap-2">
              <div>
                <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   📋 The Live Complaint Matrix
@@ -223,7 +223,7 @@ export default function AdminDashboard() {
 
         {/* Right: Detailed Panel */}
         {selectedComplaint ? (
-          <div className="w-2/5 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+          <div className="w-full lg:w-2/5 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-[500px] lg:min-h-0">
             <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
                <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                   {selectedComplaint.type === 'Query' ? '❓ General Query' : '📢 Complaint ID'}: {selectedComplaint.complaintId || selectedComplaint.id.substring(0,8)}
@@ -257,13 +257,25 @@ export default function AdminDashboard() {
                    )}
                  </div>
                  {selectedComplaint.location && (
-                   <div className="w-40 h-28 bg-gray-100 rounded border cursor-pointer border-gray-200 relative overflow-hidden shrink-0">
+                   <a 
+                     href={`https://www.google.com/maps/search/?api=1&query=${selectedComplaint.location.lat},${selectedComplaint.location.lng}`}
+                     target="_blank"
+                     rel="noreferrer"
+                     className="w-full h-36 sm:w-56 bg-gray-100 rounded-xl border border-gray-200 relative overflow-hidden shrink-0 group hover:ring-2 hover:ring-red-500/20 transition-all shadow-sm"
+                     title="Open in Google Maps"
+                   >
                       <MapViewer 
                         lat={parseFloat(selectedComplaint.location?.lat || '0')} 
                         lng={parseFloat(selectedComplaint.location?.lng || '0')} 
                         address={selectedComplaint.location?.address || ''} 
+                        showPopup={false}
                       />
-                   </div>
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center transition-all">
+                        <div className="bg-white/90 p-1.5 rounded-lg shadow-lg scale-0 group-hover:scale-100 transition-all duration-300">
+                          <ExternalLink className="w-4 h-4 text-red-600" />
+                        </div>
+                      </div>
+                   </a>
                  )}
                </div>
 
@@ -303,8 +315,8 @@ export default function AdminDashboard() {
             </div>
           </div>
         ) : (
-          <div className="w-2/5 bg-gray-50 rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-gray-400">
-             <p>Select a complaint from the matrix to view details.</p>
+          <div className="w-full lg:w-2/5 bg-gray-50 rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-gray-400 min-h-[200px] lg:min-h-0">
+             <p className="text-sm font-bold uppercase tracking-widest text-center px-6">Select a complaint from the matrix to view details.</p>
           </div>
         )}
       </div>

@@ -9,7 +9,7 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { useEffect } from 'react';
 
 // Fix for leaflet default icons in nextjs
-export default function MapViewer({ lat, lng, address }: { lat: number, lng: number, address: string }) {
+export default function MapViewer({ lat, lng, address, showPopup = true }: { lat: number, lng: number, address: string, showPopup?: boolean }) {
   useEffect(() => {
     // Standard Leaflet Icon Fix for Next.js
     L.Icon.Default.mergeOptions({
@@ -20,16 +20,25 @@ export default function MapViewer({ lat, lng, address }: { lat: number, lng: num
   }, []);
 
   return (
-    <div className="w-full h-64 rounded-xl overflow-hidden shadow-sm mt-4 border border-gray-100 z-0 relative">
-      <MapContainer center={[lat, lng]} zoom={15} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
+    <div className="w-full h-full relative">
+      <MapContainer 
+        key={`${lat}-${lng}`}
+        center={[lat, lng]} 
+        zoom={15} 
+        scrollWheelZoom={false} 
+        style={{ height: '100%', width: '100%' }}
+        zoomControl={false}
+        attributionControl={false}
+      >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <Marker position={[lat, lng]}>
-          <Popup>
-            {address || 'Complaint Location'}
-          </Popup>
+          {showPopup && (
+            <Popup>
+              {address || 'Complaint Location'}
+            </Popup>
+          )}
         </Marker>
       </MapContainer>
     </div>

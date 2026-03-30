@@ -55,20 +55,23 @@ export default function ComplaintQueuePage() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col flex-1 overflow-hidden">
         
         {/* Header & Filters */}
-        <div className="px-6 py-5 border-b border-gray-200 bg-white sticky top-0 z-20">
-           <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4">
-              <ListIcon className="w-5 h-5 text-gray-500" /> The Live Complaint Queue <span className="text-gray-400 font-normal">(Full List)</span>
+        <div className="px-4 sm:px-6 py-5 border-b border-gray-200 bg-white sticky top-0 z-20">
+           <h2 className="text-lg font-bold text-gray-800 flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
+              <span className="flex items-center gap-2">
+                <ListIcon className="w-5 h-5 text-gray-400" /> The Live Complaint Queue
+              </span>
+              <span className="text-gray-400 font-normal text-sm sm:text-base">(Full Municipal List)</span>
            </h2>
            
-           {/* Filters Row */}
-           <div className="flex items-end gap-6 flex-wrap">
-             <div>
-               <label className="block text-xs font-bold text-gray-700 mb-1.5">Category</label>
+           {/* Filters Grid */}
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-end gap-4 sm:gap-6">
+             <div className="w-full lg:w-48">
+               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Category</label>
                <div className="relative">
                  <select 
                    value={categoryFilter}
                    onChange={(e) => setCategoryFilter(e.target.value)}
-                   className="appearance-none bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-red-500 focus:border-red-500 block w-48 p-2 pr-8 outline-none"
+                   className="appearance-none bg-gray-50/50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-2 focus:ring-red-500/20 focus:border-red-500 block w-full p-2.5 pr-8 outline-none transition-all font-bold"
                  >
                    <option value="All">All Categories</option>
                    <option value="Water">Water</option>
@@ -76,18 +79,18 @@ export default function ComplaintQueuePage() {
                    <option value="Electricity">Electricity</option>
                    <option value="Garbage">Garbage</option>
                  </select>
-                 <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                 <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                </div>
              </div>
 
-             <div>
-               <label className="block text-xs font-bold text-gray-700 mb-1.5">Status</label>
-               <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200">
+             <div className="w-full lg:w-auto">
+               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Status Filter</label>
+               <div className="flex bg-gray-100/80 rounded-lg p-1 border border-gray-200 overflow-x-auto custom-scrollbar no-scrollbar gap-1">
                  {['All', 'Pending', 'In Progress', 'Resolved'].map(s => (
                    <button 
                      key={s}
                      onClick={() => setStatusFilter(s)}
-                     className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${statusFilter === s ? 'bg-white shadow-sm text-red-600' : 'text-gray-600 hover:text-gray-900'}`}
+                     className={`px-4 py-1.5 text-[11px] font-bold rounded flex-shrink-0 transition-all uppercase tracking-tighter ${statusFilter === s ? 'bg-white shadow-sm text-red-600' : 'text-gray-400 hover:text-gray-700'}`}
                    >
                      {s}
                    </button>
@@ -95,12 +98,12 @@ export default function ComplaintQueuePage() {
                </div>
              </div>
 
-             <div>
-               <label className="block text-xs font-bold text-gray-700 mb-1.5">Date Range</label>
+             <div className="w-full lg:w-56 hidden sm:block">
+               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Date Range</label>
                <div className="relative">
-                 <div className="flex items-center bg-white border border-gray-300 text-gray-700 text-sm rounded-lg p-2 w-56 cursor-pointer">
+                 <div className="flex items-center bg-white border border-gray-200 text-gray-600 text-sm rounded-lg p-2.5 w-full cursor-not-allowed opacity-60">
                    <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                   <span>Date - Range</span>
+                   <span className="font-bold">Real-time Range</span>
                    <ChevronDown className="w-4 h-4 text-gray-500 ml-auto" />
                  </div>
                </div>
@@ -108,9 +111,9 @@ export default function ComplaintQueuePage() {
            </div>
         </div>
         
-        {/* Table Body */}
-        <div className="flex-1 overflow-auto bg-gray-50/30">
-          <table className="w-full text-left border-collapse">
+        {/* Responsive Table Wrapper */}
+        <div className="flex-1 overflow-x-auto bg-gray-50/30 custom-scrollbar">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead className="sticky top-0 bg-gray-50 shadow-sm z-10">
               <tr className="text-xs font-bold text-gray-500 border-b border-gray-200 uppercase tracking-widest bg-gray-50/50">
                 <th className="p-4 pl-6 font-bold">Citizen</th>

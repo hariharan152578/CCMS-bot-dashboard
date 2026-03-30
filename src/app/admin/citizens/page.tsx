@@ -203,19 +203,19 @@ export default function CitizensPage() {
       {selectedCitizen && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setSelectedCitizen(null)}></div>
-          <div className="bg-white rounded-2xl shadow-2xl z-10 w-[650px] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl z-10 w-[95%] max-w-2xl sm:w-full flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
              
              {/* Modal Header */}
-             <div className="p-8 border-b border-gray-100 relative bg-gray-50/50">
-               <button onClick={() => setSelectedCitizen(null)} className="absolute top-6 right-6 p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all">
+             <div className="p-4 sm:p-8 border-b border-gray-100 relative bg-gray-50/50">
+               <button onClick={() => setSelectedCitizen(null)} className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all">
                  <X className="w-5 h-5" />
                </button>
-               <div className="flex items-center gap-6">
-                 <img src={`https://ui-avatars.com/api/?name=${selectedCitizen.name || 'C'}&size=128&background=random&color=fff`} className="w-24 h-24 rounded-full border-4 border-white shadow-xl shadow-gray-200" alt="profile"/>
+               <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-center sm:text-left">
+                 <img src={`https://ui-avatars.com/api/?name=${selectedCitizen.name || 'C'}&size=128&background=random&color=fff`} className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white shadow-xl shadow-gray-200" alt="profile"/>
                  <div>
                    <span className="inline-block px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold uppercase rounded mb-2">Verified Citizen</span>
                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">{selectedCitizen.name || 'Citizen Profile'}</h2>
-                   <div className="text-gray-500 font-mono flex items-center gap-2 text-sm mt-1">
+                   <div className="text-gray-500 font-mono flex items-center justify-center sm:justify-start gap-2 text-xs sm:text-sm mt-1">
                      <Mail className="w-4 h-4 text-gray-400"/> {selectedCitizen.phone}@wa.messenger
                    </div>
                  </div>
@@ -223,9 +223,9 @@ export default function CitizensPage() {
              </div>
 
              {/* Modal Body */}
-             <div className="p-8 flex flex-col gap-8">
+             <div className="p-4 sm:p-8 flex flex-col gap-6 sm:gap-8 overflow-y-auto max-h-[70vh] custom-scrollbar">
                 
-                <div className="grid grid-cols-2 gap-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10">
                    {/* Left: Interaction Stats */}
                    <div className="space-y-6">
                       <div>
@@ -274,17 +274,17 @@ export default function CitizensPage() {
                    </div>
                 </div>
 
-                <div className="flex justify-end pt-6 border-t border-gray-100 gap-4">
-                  <button onClick={() => setSelectedCitizen(null)} className="px-6 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors">
-                    Close Details
-                  </button>
-                  <button 
-                    onClick={() => setIsChatOpen(true)}
-                    className="bg-black hover:bg-red-700 text-white font-bold px-8 py-2.5 rounded-xl shadow-lg text-sm transition-all uppercase tracking-wide"
-                  >
-                    Contact Citizen
-                  </button>
-                </div>
+                 <div className="flex flex-col sm:flex-row justify-end pt-6 border-t border-gray-100 gap-3 sm:gap-4">
+                   <button onClick={() => setSelectedCitizen(null)} className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors">
+                     Close Details
+                   </button>
+                   <button 
+                     onClick={() => setIsChatOpen(true)}
+                     className="w-full sm:w-auto bg-black hover:bg-red-700 text-white font-bold px-8 py-2.5 rounded-xl shadow-lg text-sm transition-all uppercase tracking-wide"
+                   >
+                     Contact Citizen
+                   </button>
+                 </div>
              </div>
           </div>
         </div>
@@ -292,7 +292,7 @@ export default function CitizensPage() {
 
        {/* Contact Side Drawer (Persistent Sliding Panel) */}
        <div 
-         className={`fixed inset-y-0 right-0 z-[60] w-[420px] bg-white shadow-2xl transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col border-l border-gray-100 ${
+         className={`fixed inset-y-0 right-0 z-[100] w-full sm:w-[420px] bg-white shadow-2xl transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col border-l border-gray-100 ${
            isChatOpen ? 'translate-x-0' : 'translate-x-full'
          }`}
        >

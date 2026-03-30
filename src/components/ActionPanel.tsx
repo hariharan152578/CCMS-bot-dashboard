@@ -51,7 +51,7 @@ export default function ActionPanel({ complaintId, currentStatus, currentPriorit
   return (
     <div className="space-y-4">
       {/* Management Panel Inputs */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Status</label>
           <select 
