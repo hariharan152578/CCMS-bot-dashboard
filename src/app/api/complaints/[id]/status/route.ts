@@ -71,15 +71,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     // Notify user via WhatsApp
     const userId = complaint.userId; 
-    if (userId && reason) { 
+    const finalReason = reason || `Your complaint status has been updated to ${status || complaint.status}.`;
+    
+    if (userId && (status || reason)) { 
       const userSnap = await get(ref(db, `users/${userId}`));
       if (userSnap.exists()) {
         const user = userSnap.val();
         const config = await getWaConfig();
         const notificationStatus = status || complaint.status;
-        const messageBody = `Hello ${user.name || ''},\n\nYour complaint update 📢\nID: ${complaint.complaintId || id}\nStatus: *${notificationStatus.toUpperCase()}*\nMessage: ${reason}`;
+        const messageBody = `Hello ${user.name || 'Citizen'},\n\nYour complaint update 📢\nID: ${complaint.complaintId || id}\nStatus: *${notificationStatus.toUpperCase()}*\nMessage: ${finalReason}`;
         
-        await sendWhatsAppMessage(user.phone, messageBody, config);
+        await sendWhatsAppMessage(user.phone || userId, messageBody, config);
       }
     }
 

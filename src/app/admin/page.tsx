@@ -224,10 +224,15 @@ export default function AdminDashboard() {
                          {c.type === 'Query' ? c.description : `${c.category}: ${c.description}`}
                       </td>
                       <td className="p-3">
-                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md bg-gray-100 ${c.status === 'Pending' ? 'text-red-600' : 'text-gray-600'} flex items-center gap-1 w-max`}>
-                           <span className={`w-1.5 h-1.5 rounded-full ${c.status === 'Pending' ? 'bg-red-600' : 'bg-gray-500'}`}></span>
-                           {c.status.toUpperCase()}
-                         </span>
+                         <div className="flex items-center gap-1.5">
+                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md bg-gray-100 ${c.status === 'Pending' ? 'text-red-600' : 'text-gray-600'} flex items-center gap-1 w-max`}>
+                               <span className={`w-1.5 h-1.5 rounded-full ${c.status === 'Pending' ? 'bg-red-600' : 'bg-gray-500'}`}></span>
+                               {c.status.toUpperCase()}
+                            </span>
+                            {(Date.now() - (c.createdAt || 0)) < 1800000 && (
+                               <span className="animate-pulse bg-red-600 text-white text-[8px] font-black px-1 py-0.5 rounded uppercase tracking-tighter">New</span>
+                            )}
+                         </div>
                       </td>
                       <td className="p-3 text-[10px] text-gray-400 whitespace-nowrap">{timeDisplay}</td>
                     </tr>
