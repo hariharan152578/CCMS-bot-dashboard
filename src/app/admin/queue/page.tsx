@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { ref, onValue, get } from 'firebase/database';
-import { Droplet, Route, Trash2, Calendar, ChevronDown, List as ListIcon } from 'lucide-react';
+import { Droplet, Route, Trash2, Zap, Calendar, ChevronDown, List as ListIcon } from 'lucide-react';
 
 export default function ComplaintQueuePage() {
   const [complaints, setComplaints] = useState<any[]>([]);
@@ -164,10 +164,11 @@ export default function ComplaintQueuePage() {
                              <span className="text-gray-400 italic">N/A (General)</span>
                            ) : (
                              <>
-                               {c.category === 'Water' && <Droplet className="w-4 h-4 text-blue-500" />}
-                               {c.category === 'Road' && <Route className="w-4 h-4 text-gray-500" />}
-                               {c.category === 'Garbage' && <Trash2 className="w-4 h-4 text-amber-500" />}
-                               <span>{c.category === 'Other' ? c.customCategory : c.category}</span>
+                               {c.category?.includes('Water') && <Droplet className="w-4 h-4 text-blue-500" />}
+                               {c.category?.includes('Road') && <Route className="w-4 h-4 text-gray-500" />}
+                               {c.category?.includes('Garbage') && <Trash2 className="w-4 h-4 text-amber-500" />}
+                               {c.category?.includes('Electricity') && <Zap className="w-4 h-4 text-yellow-500" />}
+                               <span className="font-bold">{c.category === 'Other' ? (c.customCategory || 'Other') : c.category}</span>
                              </>
                            )}
                         </div>

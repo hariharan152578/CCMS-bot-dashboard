@@ -199,7 +199,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="p-3 text-xs text-gray-700 font-mono">{c.complaintId || c.id.substring(0,8)}</td>
                       <td className="p-3 text-xs text-gray-700 truncate max-w-[200px]">
-                         {c.type === 'Query' ? c.description : `${c.category}: ${c.description}`}
+                         {c.type === 'Query' ? c.description : `${c.category === 'Other' ? (c.customCategory || 'Other') : c.category}: ${c.description}`}
                       </td>
                       <td className="p-3">
                          <div className="flex items-center gap-1.5">
@@ -252,7 +252,7 @@ export default function AdminDashboard() {
                    {selectedComplaint.type !== 'Query' && (
                      <div className="mt-3">
                         <span className="text-gray-400 block tracking-tight uppercase font-bold text-[9px]">Category / Priority</span>
-                        <span className="font-bold text-blue-600">{selectedComplaint.category}</span> | <span className="font-bold text-red-600">{selectedComplaint.priority}</span>
+                        <span className="font-bold text-blue-600">{selectedComplaint.category === 'Other' ? (selectedComplaint.customCategory || 'Other') : selectedComplaint.category}</span> | <span className="font-bold text-red-600">{selectedComplaint.priority}</span>
                      </div>
                    )}
                  </div>
