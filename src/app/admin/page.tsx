@@ -271,9 +271,25 @@ export default function AdminDashboard() {
               {/* Narrative */}
               <div className="mb-6">
                 <strong className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Narrative</strong>
-                <p className="text-sm text-gray-800 bg-gray-50 p-4 rounded-lg border border-gray-100 leading-relaxed font-medium">
-                  {selectedComplaint.description || "No specific narrative provided."}
-                </p>
+                {selectedComplaint.description?.startsWith('AUDIO_MEDIA_ID:') ? (
+                  <div className="bg-gray-900/5 p-4 rounded-xl border border-gray-200/50 backdrop-blur-sm shadow-inner">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                      </div>
+                      <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">Voice Description (Live Recording)</span>
+                    </div>
+                    <audio 
+                      controls 
+                      src={`/api/media/${selectedComplaint.description.replace('AUDIO_MEDIA_ID:', '')}`} 
+                      className="w-full h-10 accent-red-600 rounded-lg shadow-sm"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-800 bg-gray-50 p-4 rounded-lg border border-gray-100 leading-relaxed font-medium">
+                    {selectedComplaint.description || "No specific narrative provided."}
+                  </p>
+                )}
               </div>
 
               {/* Visual Evidence */}
@@ -281,11 +297,32 @@ export default function AdminDashboard() {
                 <strong className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Visual Evidence</strong>
                 <div className="grid grid-cols-4 gap-2">
                   {selectedComplaint.media && selectedComplaint.media.length > 0 ? (
-                    selectedComplaint.media.map((url: string, idx: number) => (
-                      <a key={idx} href={url} target="_blank" rel="noreferrer" className="aspect-square relative overflow-hidden rounded-lg border border-gray-100">
-                        <img src={url} alt="evidence" className="absolute inset-0 w-full h-full object-cover" />
-                      </a>
-                    ))
+                    selectedComplaint.media.map((url: string, idx: number) => {
+                      const isNumericId = /^\d+$/.test(url);
+                      const finalUrl = isNumericId ? `/api/media/${url}` : url;
+                      return (
+                        <div key={idx} className="aspect-square relative overflow-hidden rounded-lg border border-gray-200 shadow-sm group">
+                          <a href={finalUrl} target="_blank" rel="noreferrer" className="block w-full h-full">
+                             {/* Note: We use a simple image for now, but if it's audio, it will fail to load as image and can be enhanced */}
+                             <img 
+                               src={finalUrl} 
+                               alt="evidence" 
+                               className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                               onError={(e) => {
+                                 // Fallback for audio files in gallery
+                                 const target = e.target as HTMLImageElement;
+                                 target.onerror = null;
+                                 target.src = "https://cdn-icons-png.flaticon.com/512/5948/5948503.png"; // Audio icon
+                                 target.parentElement?.classList.add('bg-gray-100');
+                               }}
+                             />
+                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                <ExternalLink className="w-5 h-5 text-white" />
+                             </div>
+                          </a>
+                        </div>
+                      );
+                    })
                   ) : (
                     <div className="aspect-square bg-gray-50 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-400 uppercase">No Media</div>
                   )}

@@ -131,7 +131,7 @@ export async function POST(req: Request) {
       lat = message.location?.latitude?.toString() || '';
       lng = message.location?.longitude?.toString() || '';
       address = message.location?.address || 'Shared Meta Location';
-    } else if (['image', 'video', 'document'].includes(type) && message[type]) {
+    } else if (['image', 'video', 'document', 'audio'].includes(type) && message[type]) {
       mediaId = message[type].id;
     }
 
@@ -263,8 +263,8 @@ export async function POST(req: Request) {
         break;
 
       case 'COMPLAINT_DESCRIPTION':
-        console.log(`[FSM] COMPLAINT_DESCRIPTION -> Input: ${bodyText}`);
-        state.tempData.description = bodyText;
+        console.log(`[FSM] COMPLAINT_DESCRIPTION -> Input: ${bodyText || type}`);
+        state.tempData.description = bodyText || (type === 'audio' ? `AUDIO_MEDIA_ID:${mediaId}` : '');
         responseBody = getMessage('share_location', (state.tempData.language || 'en') as Language);
         nextStep = 'LOCATION_CAPTURE';
         break;
@@ -365,7 +365,7 @@ export async function POST(req: Request) {
           userId: phoneKey,
           type: 'Query',
           language: qLang,
-          description: bodyText,
+          description: bodyText || (type === 'audio' ? `AUDIO_MEDIA_ID:${mediaId}` : ''),
           status: 'Pending',
           priority: 'Medium',
           createdAt: Date.now(),
