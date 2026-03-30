@@ -19,24 +19,48 @@ export async function GET(
       return new NextResponse('WhatsApp Configuration Missing', { status: 500 });
     }
 
-    const url = `https://graph.facebook.com/v20.0/${id}`;
-    const res = await fetch(url, {
+    // Step 1: Get media URL from Meta
+    const metaUrl = `https://graph.facebook.com/v20.0/${id}`;
+    const metaRes = await fetch(metaUrl, {
       headers: {
         'Authorization': `Bearer ${config.accessToken}`
       }
     });
 
-    const data = await res.json();
+    const metaData = await metaRes.json();
 
-    if (!res.ok || !data.url) {
-      console.error('Meta Media API Error:', data);
-      return new NextResponse('Failed to fetch media URL', { status: res.status });
+    if (!metaRes.ok || !metaData.url) {
+      console.error('Meta Media Meta-Data Error:', metaData);
+      return new NextResponse('Failed to fetch media metadata', { status: metaRes.status });
     }
 
-    // Redirect to the actual media file (Meta's temporary URL)
-    return NextResponse.redirect(data.url);
+    // Step 2: Fetch the actual binary content from Meta (with Auth header)
+    const mediaRes = await fetch(metaData.url, {
+      headers: {
+        'Authorization': `Bearer ${config.accessToken}`
+      }
+    });
+
+    if (!mediaRes.ok) {
+      console.error('Meta Binary Download Error:', mediaRes.status);
+      return new NextResponse('Failed to stream media content', { status: mediaRes.status });
+    }
+
+    // Step 3: Stream the content back to the browser
+    const headers = new Headers();
+    if (metaData.mime_type) headers.set('Content-Type', metaData.mime_type);
+    if (metaData.file_size) headers.set('Content-Length', metaData.file_size.toString());
+    
+    // Safety check for cache
+    headers.set('Cache-Control', 'public, max-age=3600');
+
+    return new Response(mediaRes.body, {
+      status: 200,
+      headers
+    });
+
   } catch (error: any) {
-    console.error('Media Proxy Error:', error);
+    console.error('Media Proxy Streaming Error:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }
