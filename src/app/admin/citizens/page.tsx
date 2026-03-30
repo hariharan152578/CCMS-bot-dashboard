@@ -230,9 +230,9 @@ export default function CitizensPage() {
 
       {/* Citizen Profile Modal */}
       {selectedCitizen && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-1004 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setSelectedCitizen(null)}></div>
-          <div className="bg-white rounded-2xl shadow-2xl z-10 w-[95%] max-w-2xl sm:w-full flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-xl shadow-2xl z-10 w-[95%] max-w-2xl sm:w-full flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
              
              {/* Modal Header */}
              <div className="p-6 sm:p-8 border-b border-gray-100 relative bg-gray-50/50">
@@ -240,7 +240,7 @@ export default function CitizensPage() {
                  <X className="w-5 h-5" />
                </button>
                <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-6 text-center sm:text-left">
-                 <img src={`https://ui-avatars.com/api/?name=${selectedCitizen.name || 'C'}&size=128&background=random&color=fff`} className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-white shadow-xl shadow-gray-200" alt="profile"/>
+                 <img src={`https://ui-avatars.com/api/?name=${selectedCitizen.name || 'C'}&size=128&background=random&color=fff`} className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl border-4 border-white shadow-xl shadow-gray-200" alt="profile"/>
                  <div>
                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">{selectedCitizen.name || 'Citizen Profile'}</h2>
                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Verified Platform Identity • Access Clear</p>
@@ -304,7 +304,7 @@ export default function CitizensPage() {
                    <button onClick={() => setSelectedCitizen(null)} className="w-full sm:w-auto px-6 py-2.5 text-xs font-bold text-gray-400 hover:text-gray-900 transition-colors uppercase tracking-widest">Discard</button>
                    <button 
                      onClick={() => setIsChatOpen(true)}
-                     className="w-full sm:w-auto bg-gray-900 hover:bg-black text-white font-bold px-8 py-2.5 rounded-lg text-xs transition-all uppercase tracking-widest"
+                     className="w-full sm:w-auto bg-gray-900 hover:bg-red-600 text-white font-bold px-8 py-2.5 rounded-lg text-xs transition-all uppercase tracking-widest"
                    >
                      Interrogate & Contact
                    </button>
@@ -316,7 +316,7 @@ export default function CitizensPage() {
 
        {/* Contact Side Drawer */}
        <div 
-         className={`fixed inset-y-0 right-0 z-[100] w-full sm:w-[420px] bg-white shadow-2xl transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col border-l border-gray-100 ${
+         className={`fixed inset-y-0 right-0 z-1005 w-full sm:w-[420px] bg-white shadow-2xl transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col border-l border-gray-100 ${
            isChatOpen ? 'translate-x-0' : 'translate-x-full'
          }`}
        >
@@ -346,9 +346,9 @@ export default function CitizensPage() {
              ) : (
                chatHistory.map((m, i) => (
                  <div key={m.id || i} className={`flex ${m.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] p-4 rounded-2xl shadow-sm border ${
+                    <div className={`max-w-[85%] p-4 rounded-xl shadow-sm border ${
                       m.sender === 'admin' 
-                        ? 'bg-black text-white border-black rounded-tr-none' 
+                        ? 'bg-gray-900 text-white border-gray-900 rounded-tr-none' 
                         : 'bg-white text-gray-800 border-gray-100 rounded-tl-none'
                     }`}>
                        <p className="text-sm leading-relaxed">{m.text}</p>
@@ -368,7 +368,7 @@ export default function CitizensPage() {
                   placeholder="Compose WhatsApp message..."
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
-                  className="w-full p-4 pr-12 border border-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-red-500/5 focus:border-red-500 bg-gray-50/50 transition-all resize-none font-medium"
+                  className="w-full p-4 pr-12 border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-red-500/5 focus:border-red-500 bg-gray-50/50 transition-all resize-none font-medium"
                 />
                 <button 
                   disabled={sending || !chatMessage.trim()}
@@ -389,7 +389,7 @@ export default function CitizensPage() {
        {/* Drawer Backdrop Overlay */}
        {isChatOpen && (
          <div 
-           className="fixed inset-0 bg-gray-900/40 backdrop-blur-[2px] z-[55]"
+           className="fixed inset-0 bg-gray-900/40 backdrop-blur-[2px] z-1004"
            onClick={() => setIsChatOpen(false)}
          />
        )}
