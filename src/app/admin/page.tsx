@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { ref, onValue, get } from 'firebase/database';
-import { Droplet, Zap, Route, Trash2, X } from 'lucide-react';
+import { Droplet, Zap, Route, Trash2, X, CheckCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import ActionPanel from '@/components/ActionPanel';
 import Image from 'next/image';
@@ -12,7 +12,6 @@ const MapViewer = dynamic(() => import('@/components/MapViewer'), { ssr: false }
 
 export default function AdminDashboard() {
   const [complaints, setComplaints] = useState<any[]>([]);
-  const [botStates, setBotStates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState('All');
@@ -46,21 +45,8 @@ export default function AdminDashboard() {
       }
     });
 
-    const botStateRef = ref(db, 'botState');
-    const unsubBot = onValue(botStateRef, (snap) => {
-      let states: any[] = [];
-      if (snap.exists()) {
-        snap.forEach((child) => {
-          states.push({ id: child.key, ...child.val() });
-        });
-      }
-      states.sort((a, b) => (b.lastInteraction || 0) - (a.lastInteraction || 0));
-      setBotStates(states.slice(0, 5)); // Just the last 5
-    });
-
     return () => {
       unsubscribe();
-      unsubBot();
     };
   }, []);
 
@@ -125,27 +111,19 @@ export default function AdminDashboard() {
             <p className="text-xs text-gray-500 mt-2 font-medium">Number | -2 Resolve time vs target</p>
           </div>
 
-          <div className="rounded-lg shadow-sm border border-gray-200 p-5 relative overflow-hidden bg-gray-50/50">
-            <h3 className="text-xs font-bold tracking-wider text-gray-800 uppercase mb-2 flex items-center gap-1">
-               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Live Bot Feed
-            </h3>
-            <div className="space-y-2 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
-              {botStates.length === 0 ? (
-                <p className="text-[10px] text-gray-400 italic">Waiting for interactions...</p>
-              ) : (
-                botStates.map((s, i) => (
-                  <div key={i} className="flex flex-col gap-1 bg-white p-2 rounded border border-gray-100 shadow-sm animate-in slide-in-from-right-2">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-mono text-gray-500">+{s.id.substring(0,8)}...</span>
-                      <span className="font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded uppercase tracking-tighter">{s.currentStep}</span>
-                    </div>
-                    <p className="text-[10px] text-gray-600 italic truncate border-t border-gray-50 pt-1">
-                      "{s.lastMessage || '...'}"
-                    </p>
-                  </div>
-                ))
-              )}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 relative overflow-hidden group hover:border-green-200 transition-all">
+            <h3 className="text-xs font-bold tracking-wider text-gray-500 uppercase mb-2">Resolution Efficiency</h3>
+            <div className="flex items-end justify-between">
+               <span className="text-4xl font-extrabold text-gray-900">
+                  {total > 0 ? ((resolved / total) * 100).toFixed(0) : 0}%
+               </span>
+               <div className="w-10 h-10 bg-green-50 text-green-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <CheckCircle className="w-5 h-5" />
+               </div>
             </div>
+            <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-tighter">
+               <span className="text-green-600">{resolved}</span> Total Closures Confirmed
+            </p>
           </div>
         </div>
       </div>
