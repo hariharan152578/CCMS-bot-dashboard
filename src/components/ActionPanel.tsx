@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Check } from 'lucide-react';
 
 export default function ActionPanel({ complaintId, currentStatus, currentPriority }: { complaintId: string, currentStatus: string, currentPriority: string }) {
   const [loading, setLoading] = useState(false);
@@ -19,11 +20,11 @@ export default function ActionPanel({ complaintId, currentStatus, currentPriorit
 
   const handleSubmit = async () => {
     if (!reason.trim()) {
-        if (!confirm(`No message text provided. Citizen will only get a generic status update message. Proceed?`)) return;
+      if (!confirm(`No message text provided. Citizen will only get a generic status update message. Proceed?`)) return;
     } else {
-        if (!confirm(`Are you sure you want to update this complaint? A WhatsApp notification will be sent.`)) return;
+      if (!confirm(`Are you sure you want to update this complaint? A WhatsApp notification will be sent.`)) return;
     }
-    
+
     setLoading(true);
     setSuccess(false);
 
@@ -53,11 +54,11 @@ export default function ActionPanel({ complaintId, currentStatus, currentPriorit
       {/* Management Panel Inputs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Status</label>
-          <select 
-            value={status} 
-            onChange={(e) => setStatus(e.target.value)} 
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white shadow-sm transition-all"
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">Status Protocol</label>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white shadow-sm transition-all cursor-pointer"
           >
             <option value="Pending">PENDING</option>
             <option value="In Progress">IN PROGRESS</option>
@@ -65,29 +66,29 @@ export default function ActionPanel({ complaintId, currentStatus, currentPriorit
             <option value="Rejected">REJECTED</option>
           </select>
         </div>
-        
+
         <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Priority</label>
-          <select 
-            value={priority} 
-            onChange={(e) => setPriority(e.target.value)} 
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white shadow-sm transition-all"
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-1">Risk Priority</label>
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white shadow-sm transition-all cursor-pointer"
           >
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
+            <option value="Low">LOW</option>
+            <option value="Medium">MEDIUM</option>
+            <option value="High">HIGH</option>
           </select>
         </div>
       </div>
 
-      <div>
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex justify-between">
-          WhatsApp Notification Reply
-          {reason.length > 0 && <span className="text-[10px] text-red-600 font-bold">{reason.length} chars</span>}
+      <div className="relative">
+        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 px-1 flex justify-between items-center">
+          WhatsApp Response Message
+          {reason.length > 0 && <span className="text-[9px] text-red-600 font-bold">{reason.length} / 1000</span>}
         </label>
-        <textarea 
-          placeholder="Write your reply or feedback here... The citizen will receive this on WhatsApp."
-          className="w-full text-sm text-gray-800 border border-gray-200 rounded-lg p-3 outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white shadow-sm transition-all resize-none min-h-[100px]"
+        <textarea
+          placeholder="Enter the official response here..."
+          className="w-full text-sm font-medium text-gray-800 border border-gray-200 rounded-lg p-3 outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white shadow-sm transition-all resize-none min-h-[100px]"
           rows={4}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
@@ -96,15 +97,15 @@ export default function ActionPanel({ complaintId, currentStatus, currentPriorit
 
       <div className="pt-2 relative">
         {success && (
-          <div className="absolute -top-6 left-0 text-xs text-green-600 font-bold animate-in fade-in slide-in-from-bottom-2">
-            ✅ Updated & Sent Successfully!
+          <div className="mb-2 text-green-600 text-xs font-bold flex items-center gap-1">
+            <Check className="w-4 h-4" /> Attributes Updated Successfully!
           </div>
         )}
-        <button 
+        <button
           disabled={loading}
           onClick={handleSubmit}
-          className={`w-full text-white font-bold text-sm py-3 rounded-lg transition-all shadow-md active:scale-[0.98] ${loading ? 'bg-gray-400 opacity-50' : 'bg-red-600 hover:bg-black hover:shadow-lg hover:shadow-red-500/20'}`}>
-          {loading ? 'Processing Incident...' : 'Update Status & Notify Citizen'}
+          className={`w-full text-white font-bold text-xs py-3 rounded-lg transition-all shadow-sm active:scale-[0.98] uppercase flex items-center justify-center gap-2 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-gray-900'}`}>
+          {loading ? 'Processing...' : 'Update & Notify Citizen'}
         </button>
       </div>
     </div>

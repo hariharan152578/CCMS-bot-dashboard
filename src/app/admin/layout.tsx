@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, List, Users, BarChart2, Settings, Landmark, Search, Bell, User, X, Terminal, Clock, MessageSquare, Menu } from 'lucide-react';
+import { Home, List, Users, BarChart2, Settings, Landmark, Search, Bell, User, X, Terminal, Clock, MessageSquare, Menu, LogOut } from 'lucide-react';
 import { ReactNode, useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { ref, onValue, query, limitToLast, orderByChild } from 'firebase/database';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -25,7 +27,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     const complaintsRef = ref(db, 'complaints');
     // Fetch the 10 most recent complaints/queries
     const q = query(complaintsRef, limitToLast(10));
-    
+
     const unsubscribe = onValue(q, (snap) => {
       let items: any[] = [];
       if (snap.exists()) {
@@ -34,7 +36,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         });
       }
       // Sort by newest first
-      items.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+      items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       setNotifications(items);
     });
 
@@ -42,14 +44,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, []);
 
   const unreadCount = useMemo(() => {
-     return notifications.filter(n => (n.createdAt || 0) > lastReadTimestamp).length;
+    return notifications.filter(n => (n.createdAt || 0) > lastReadTimestamp).length;
   }, [notifications, lastReadTimestamp]);
 
   const markAllAsRead = () => {
-     const now = Date.now();
-     setLastReadTimestamp(now);
-     localStorage.setItem('ccms_last_read_notif', now.toString());
-     setIsNotifOpen(false);
+    const now = Date.now();
+    setLastReadTimestamp(now);
+    localStorage.setItem('ccms_last_read_notif', now.toString());
+    setIsNotifOpen(false);
+  };
+
+  const handleLogout = () => {
+    // Clear admin auth cookie
+    document.cookie = 'admin-auth=; Max-Age=0; path=/;';
+    router.replace('/login');
   };
 
   const navItems = [
@@ -62,203 +70,210 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     { name: 'System Settings', href: '/admin/settings', icon: Settings }
   ];
 
-  return (    <div className="flex flex-col min-h-screen bg-gray-50 text-gray-900 font-sans relative overflow-hidden">
-      
-      {/* Top Global Header */}
-      <header className="h-[72px] bg-white border-b border-gray-200 flex items-center px-4 md:px-6 shrink-0 z-50 w-full sticky top-0 shadow-sm">
-        <div className="flex items-center text-gray-800 w-auto lg:w-64">
-          {/* Hamburger - Mobile only */}
-          <button 
-            onClick={() => setIsSidebarOpen(true)}
-            className="mr-3 p-2 hover:bg-gray-100 rounded-lg lg:hidden transition-colors"
-          >
-            <Menu className="w-6 h-6 text-gray-600" />
-          </button>
-          <Landmark className="w-6 h-6 text-red-600 mr-2" />
-          <span className="font-bold text-lg tracking-tight hidden sm:inline-block uppercase">CCMS<span className="font-normal text-gray-500 ml-1">| Citizen Command</span></span>
-          <span className="font-bold text-lg tracking-tight sm:hidden text-red-600">CCMS</span>
-        </div>
-        
-        <div className="flex-1 flex justify-center px-4">
-          <div className="bg-red-50 text-red-800 text-[9px] sm:text-[10px] font-bold tracking-widest px-3 sm:px-4 py-1.5 rounded-full flex items-center shadow-sm border border-red-100 uppercase truncate max-w-[150px] sm:max-w-none">
-            <span className="w-2 h-2 shrink-0 rounded-full bg-red-600 mr-2 animate-pulse"></span>
-            <span className="truncate">Real-Time Engine Active</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-6 shrink-0">
-          <div className="relative hidden lg:block">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input type="text" placeholder="Omni Search" className="pl-9 pr-4 py-1.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all w-64" />
-          </div>
-          
-          {/* Notification Bell */}
-          <div className="relative cursor-pointer group p-1.5 sm:p-0" onClick={() => setIsNotifOpen(true)}>
-            <Bell className={`w-5 h-5 transition-colors ${unreadCount > 0 ? 'text-red-600 animate-bounce' : 'text-gray-400 hover:text-gray-900'}`} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-black text-[9px] font-bold text-white ring-2 ring-white">
-                {unreadCount}
-              </span>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-3 cursor-pointer border-l pl-3 sm:pl-6 border-gray-100 h-8">
-            <div className="hidden sm:flex flex-col items-end mr-1">
-               <span className="text-xs font-bold text-gray-900 leading-none">ADMIN</span>
-               <span className="text-[9px] font-bold text-green-600 uppercase tracking-tighter mt-0.5">System Overseer</span>
-            </div>
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-900 flex items-center justify-center text-white shadow-lg border-2 border-white shrink-0">
-              <User className="w-4 h-4" />
-            </div>
-          </div>
-        </div>
-      </header>
-
-
-      {/* Below Header container */}
-      <div className="flex flex-1 overflow-hidden relative">
-        
-        {/* Mobile Sidebar Backdrop */}
-        {isSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[55] lg:hidden animate-in fade-in duration-300"
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
-
-        {/* Sidebar */}
-        <aside className={`fixed inset-y-0 left-0 z-[60] w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto transform transition-transform duration-500 ease-in-out lg:relative lg:translate-x-0 lg:z-auto ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}>
-          {/* Mobile Sidebar Header */}
-          <div className="lg:hidden p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-             <div className="flex items-center text-gray-800">
-               <Landmark className="w-6 h-6 text-red-600 mr-2" />
-               <span className="font-bold text-lg tracking-tight">CCMS</span>
-             </div>
-             <button 
-               onClick={() => setIsSidebarOpen(false)}
-               className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all"
-             >
-               <X className="w-5 h-5" />
-             </button>
-          </div>
-
-          <nav className="py-4 lg:py-8">
-            <ul className="space-y-1">
-              {navItems.map((item) => {
-                const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
-                return (
-                  <li key={item.name}>
-                    <Link 
-                      href={item.href} 
-                      onClick={() => setIsSidebarOpen(false)}
-                      className={`flex items-center gap-3 px-6 py-3.5 border-l-4 transition-all font-bold text-sm ${
-                        isActive 
-                          ? 'bg-red-50 text-red-700 border-red-600' 
-                          : 'border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
-                    >
-                      <item.icon className={`w-5 h-5 ${isActive ? 'text-red-600' : 'opacity-40'}`} />
-                      {item.name}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-        </aside>
-
-        {/* Page Content */}
-        <main className="flex-1 overflow-auto bg-[#F9FAFC] p-4 sm:p-6 lg:p-10 relative">
-          {children}
-        </main>
+  return (<div className="flex flex-col min-h-screen bg-gray-50 text-gray-900 font-sans relative overflow-hidden">
+    
+    {/* Clean Top Global Header */}
+    <header className="h-[72px] bg-white border-b border-gray-200 flex items-center px-4 md:px-6 shrink-0 z-1001 w-full sticky top-0 shadow-sm">
+      <div className="flex items-center text-gray-800 w-auto lg:w-64">
+        {/* Hamburger - Mobile only */}
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="mr-3 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg lg:hidden transition-all duration-300 active:scale-95"
+        >
+          <Menu className="w-6 h-6 text-gray-600" />
+        </button>
+        <Landmark className="w-6 h-6 text-red-600 mr-2" />
+        <span className="font-bold text-lg tracking-tight hidden sm:inline-block uppercase">CCMS<span className="font-normal text-gray-500 ml-1">| Citizen Command</span></span>
+        <span className="font-bold text-lg tracking-tight sm:hidden text-red-600">CCMS</span>
       </div>
 
-      {/* Notification Overlay Backdrop */}
-      {isNotifOpen && (
-        <div 
-          className="fixed inset-0 bg-gray-900/40 backdrop-blur-[2px] z-40 transition-opacity"
-          onClick={() => setIsNotifOpen(false)}
+      <div className="flex-1 flex justify-center px-4">
+        <div className="bg-red-50 text-red-800 text-[10px] font-bold tracking-widest px-3 py-1.5 rounded-full flex items-center shadow-sm border border-red-100 uppercase transition-all duration-300">
+          <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-red-600 mr-2 animate-pulse"></span>
+          <span className="hidden sm:inline">Real-Time Engine Active</span>
+          <span className="sm:hidden text-[8px]">Live</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+        <div className="relative hidden lg:block">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+          <input type="text" placeholder="Omni Search" className="pl-9 pr-4 py-1.5 bg-gray-50/50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all w-64" />
+        </div>
+
+        {/* Notification Bell */}
+        <div className="relative cursor-pointer group p-1.5 sm:p-0" onClick={() => setIsNotifOpen(true)}>
+          <Bell className={`w-5 h-5 transition-colors ${unreadCount > 0 ? 'text-red-600 animate-bounce' : 'text-gray-400 hover:text-gray-900'}`} />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-black text-[9px] font-bold text-white ring-2 ring-white">
+              {unreadCount}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 cursor-pointer border-l pl-3 sm:pl-6 border-gray-100 h-8">
+          <div className="hidden sm:flex flex-col items-end mr-1">
+            <span className="text-xs font-bold text-gray-900 leading-none">ADMIN</span>
+            <span className="text-[9px] font-bold text-green-600 uppercase tracking-tighter mt-0.5">System Overseer</span>
+          </div>
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-900 flex items-center justify-center text-white shadow-lg border-2 border-white shrink-0">
+            <User className="w-4 h-4" />
+          </div>
+        </div>
+      </div>
+    </header>
+
+
+    {/* Below Header container */}
+    <div className="flex flex-1 overflow-hidden relative">
+
+      {/* Mobile Sidebar Backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-1002 lg:hidden animate-in fade-in duration-300"
+          onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      {/* Notification Drawer Panel */}
-      <div 
-        className={`fixed inset-y-0 right-0 z-[100] w-full sm:w-[420px] bg-white shadow-2xl transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col border-l border-gray-100 ${
-          isNotifOpen ? 'translate-x-0' : 'translate-x-full'
+      {/* Sidebar */}
+      <aside className={`fixed inset-y-0 left-0 z-1003 w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto transform transition-transform duration-500 ease-in-out lg:relative lg:translate-x-0 lg:z-auto ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}>
+        {/* Mobile Sidebar Header */}
+        <div className="lg:hidden p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="flex items-center text-gray-800">
+            <Landmark className="w-6 h-6 text-red-600 mr-2" />
+            <span className="font-bold text-lg tracking-tight">CCMS</span>
+          </div>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <nav className="py-4 lg:py-8">
+          <ul className="space-y-1">
+            {navItems.map((item) => {
+              const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+              return (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setIsSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-6 py-3.5 border-l-4 transition-all font-bold text-sm ${isActive
+                        ? 'bg-red-50 text-red-700 border-red-600'
+                        : 'border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                  >
+                    <item.icon className={`w-5 h-5 ${isActive ? 'text-red-600' : 'opacity-40'}`} />
+                    {item.name}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <ul className="space-y-1 mt-6 pt-6 border-t border-gray-100">
+            <li>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-6 py-3.5 border-l-4 border-transparent text-gray-500 hover:bg-red-50 hover:text-red-700 transition-all font-bold text-sm"
+              >
+                <LogOut className="w-5 h-5 opacity-40 hover:opacity-100" />
+                Sign Out / Exit
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </aside>
+
+      {/* Page Content */}
+      <main className="flex-1 overflow-auto bg-[#F9FAFC] p-4 sm:p-6 lg:p-10 relative">
+        {children}
+      </main>
+    </div>
+
+    {/* Notification Overlay Backdrop */}
+    {isNotifOpen && (
+      <div
+        className="fixed inset-0 bg-gray-900/40 backdrop-blur-[2px] z-1004 transition-opacity"
+        onClick={() => setIsNotifOpen(false)}
+      />
+    )}
+
+    {/* Notification Drawer Panel */}
+    <div
+      className={`fixed inset-y-0 right-0 z-1005 w-full sm:w-[420px] bg-white shadow-2xl transform transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col border-l border-gray-100 ${isNotifOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
-      >
-         <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                 <Bell className="w-6 h-6 text-red-600" /> Notifications
-              </h2>
-              <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">Real-time Citizen Alerts</p>
-            </div>
-            <button 
-              onClick={() => setIsNotifOpen(false)}
-              className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all"
-            >
-               <X className="w-5 h-5" />
-            </button>
-         </div>
-
-         <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-            {notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 opacity-30">
-                 <MessageSquare className="w-12 h-12 mb-4" />
-                 <p className="font-bold uppercase text-xs">No active alerts detected</p>
-              </div>
-            ) : (
-              notifications.map((n, i) => {
-                const isNew = (n.createdAt || 0) > lastReadTimestamp;
-                const timeStr = new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                return (
-                  <div key={n.id} className={`p-5 rounded-2xl border transition-all duration-300 relative group overflow-hidden ${
-                    isNew ? 'bg-red-50 border-red-100 shadow-sm ring-1 ring-red-200/50' : 'bg-white border-gray-100 opacity-60 hover:opacity-100'
-                  }`}>
-                    {isNew && <span className="absolute top-0 right-0 w-3 h-3 bg-red-600 rounded-bl-xl"></span>}
-                    <div className="flex justify-between items-start mb-2">
-                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded tracking-tighter ${
-                          n.type === 'Query' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700 uppercase'
-                       }`}>
-                          {n.type || 'Complaint'}
-                       </span>
-                       <div className="flex items-center gap-1.5 text-gray-400 text-[10px] font-bold">
-                          <Clock className="w-3 h-3" />
-                          {timeStr}
-                       </div>
-                    </div>
-                    <h4 className="text-sm font-bold text-gray-900 group-hover:text-red-600 transition-colors">Incident Detected: {n.category || 'New Query'}</h4>
-                    <p className="text-xs text-gray-500 mt-1.5 leading-relaxed line-clamp-2">"{n.description}"</p>
-                    <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
-                       <span className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter">ID: {n.complaintId || n.id.substring(0,8)}</span>
-                       <Link 
-                         href="/admin" 
-                         onClick={() => setIsNotifOpen(false)}
-                         className="text-[10px] font-bold text-red-600 uppercase hover:underline decoration-2"
-                       >
-                         Dispatch Response &rarr;
-                       </Link>
-                    </div>
-                  </div>
-                )
-              })
-            )}
-         </div>
-
-         <div className="p-6 border-t border-gray-100 bg-gray-50/50">
-           <button 
-             onClick={markAllAsRead}
-             className="w-full py-3.5 text-xs font-bold text-white bg-black rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-gray-200 tracking-widest uppercase"
-           >
-              Clear Feed & Mark Read
-           </button>
-         </div>
+    >
+      <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Bell className="w-6 h-6 text-red-600" /> Notifications
+          </h2>
+          <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">Real-time Citizen Alerts</p>
+        </div>
+        <button
+          onClick={() => setIsNotifOpen(false)}
+          className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+        {notifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 opacity-30">
+            <MessageSquare className="w-12 h-12 mb-4" />
+            <p className="font-bold uppercase text-xs">No active alerts detected</p>
+          </div>
+        ) : (
+          notifications.map((n, i) => {
+            const isNew = (n.createdAt || 0) > lastReadTimestamp;
+            const timeStr = new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            return (
+              <div key={n.id} className={`p-5 rounded-2xl border transition-all duration-300 relative group overflow-hidden ${isNew ? 'bg-red-50 border-red-100 shadow-sm ring-1 ring-red-200/50' : 'bg-white border-gray-100 opacity-60 hover:opacity-100'
+                }`}>
+                {isNew && <span className="absolute top-0 right-0 w-3 h-3 bg-red-600 rounded-bl-xl"></span>}
+                <div className="flex justify-between items-start mb-2">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded tracking-tighter ${n.type === 'Query' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700 uppercase'
+                    }`}>
+                    {n.type || 'Complaint'}
+                  </span>
+                  <div className="flex items-center gap-1.5 text-gray-400 text-[10px] font-bold">
+                    <Clock className="w-3 h-3" />
+                    {timeStr}
+                  </div>
+                </div>
+                <h4 className="text-sm font-bold text-gray-900 group-hover:text-red-600 transition-colors">Incident Detected: {n.category || 'New Query'}</h4>
+                <p className="text-xs text-gray-500 mt-1.5 leading-relaxed line-clamp-2">"{n.description}"</p>
+                <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                  <span className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter">ID: {n.complaintId || n.id.substring(0, 8)}</span>
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsNotifOpen(false)}
+                    className="text-[10px] font-bold text-red-600 uppercase hover:underline decoration-2"
+                  >
+                    Dispatch Response &rarr;
+                  </Link>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      <div className="p-6 border-t border-gray-100 bg-gray-50/50">
+        <button
+          onClick={markAllAsRead}
+          className="w-full py-3.5 text-xs font-bold text-white bg-black rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-gray-200 tracking-widest uppercase"
+        >
+          Clear Feed & Mark Read
+        </button>
+      </div>
     </div>
+
+  </div>
   );
 }
