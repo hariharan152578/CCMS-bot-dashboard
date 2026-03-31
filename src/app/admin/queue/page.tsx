@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { ref, onValue, get } from 'firebase/database';
-import { Droplet, Route, Trash2, Zap, Calendar, ChevronDown, List as ListIcon } from 'lucide-react';
+import { Droplet, Route, Trash2, Zap, Calendar, ChevronDown, List as ListIcon, X } from 'lucide-react';
 
 export default function ComplaintQueuePage() {
   const [complaints, setComplaints] = useState<any[]>([]);
@@ -13,6 +13,8 @@ export default function ComplaintQueuePage() {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     const complaintsRef = ref(db, 'complaints');
@@ -28,7 +30,7 @@ export default function ComplaintQueuePage() {
         if (c.userId) {
           const userSnap = await get(ref(db, `users/${c.userId}`));
           if (userSnap.exists()) {
-             c.user = userSnap.val();
+            c.user = userSnap.val();
           }
         }
       }));
@@ -41,12 +43,36 @@ export default function ComplaintQueuePage() {
     return () => unsubscribe();
   }, []);
 
+  // Derive unique categories dynamically
+  const categories = ['All', ...Array.from(new Set(complaints.filter(c => c.category).map(c => c.category)))].sort();
+
   const filteredComplaints = complaints.filter(c => {
     if (categoryFilter !== 'All' && c.category !== categoryFilter) return false;
     if (statusFilter !== 'All' && c.status !== statusFilter) return false;
     if (typeFilter !== 'All' && (c.type || 'Complaint') !== typeFilter) return false;
+    
+    if (startDate || endDate) {
+      const createdTime = c.createdAt || 0;
+      if (startDate) {
+        const start = new Date(startDate).setHours(0, 0, 0, 0);
+        if (createdTime < start) return false;
+      }
+      if (endDate) {
+        const end = new Date(endDate).setHours(23, 59, 59, 999);
+        if (createdTime > end) return false;
+      }
+    }
+    
     return true;
   });
+
+  const resetFilters = () => {
+    setCategoryFilter('All');
+    setStatusFilter('All');
+    setTypeFilter('All');
+    setStartDate('');
+    setEndDate('');
+  };
 
   return (
     <div className="flex flex-col h-full space-y-4">
@@ -56,15 +82,23 @@ export default function ComplaintQueuePage() {
         
         {/* Header & Filters */}
         <div className="px-4 sm:px-6 py-5 border-b border-gray-200 bg-white sticky top-0 z-20">
-           <h2 className="text-lg font-bold text-gray-800 flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
-              <span className="flex items-center gap-2">
-                <ListIcon className="w-5 h-5 text-gray-400" /> The Live Complaint Queue
-              </span>
-              <span className="text-gray-400 font-normal text-sm sm:text-base">(Full Municipal List)</span>
-           </h2>
+           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                 <ListIcon className="w-5 h-5 text-gray-400" /> The Live Complaint Queue
+                 <span className="text-gray-400 font-normal text-sm hidden sm:inline">(Full Municipal List)</span>
+              </h2>
+              
+              <button 
+                onClick={resetFilters}
+                className="text-[10px] font-bold text-red-600 hover:text-red-700 uppercase tracking-widest flex items-center gap-1.5 transition-colors"
+              >
+                <X className="w-3 h-3" /> Reset All Filters
+              </button>
+           </div>
            
            {/* Filters Grid */}
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-end gap-4 sm:gap-6">
+             {/* Category Filter */}
              <div className="w-full lg:w-48">
                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Category</label>
                <div className="relative">
@@ -73,16 +107,15 @@ export default function ComplaintQueuePage() {
                    onChange={(e) => setCategoryFilter(e.target.value)}
                    className="appearance-none bg-gray-50/50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-2 focus:ring-red-500/20 focus:border-red-500 block w-full p-2.5 pr-8 outline-none transition-all font-bold"
                  >
-                   <option value="All">All Categories</option>
-                   <option value="Water">Water</option>
-                   <option value="Road">Road</option>
-                   <option value="Electricity">Electricity</option>
-                   <option value="Garbage">Garbage</option>
+                   {categories.map(cat => (
+                     <option key={cat} value={cat}>{cat === 'All' ? 'All Categories' : cat}</option>
+                   ))}
                  </select>
                  <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                </div>
              </div>
 
+             {/* Status Filter */}
              <div className="w-full lg:w-auto">
                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Status Filter</label>
                <div className="flex bg-gray-100/80 rounded-lg p-1 border border-gray-200 overflow-x-auto custom-scrollbar no-scrollbar gap-1">
@@ -98,13 +131,30 @@ export default function ComplaintQueuePage() {
                </div>
              </div>
 
-             <div className="w-full lg:w-56 hidden sm:block">
-               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Date Range</label>
-               <div className="relative">
-                 <div className="flex items-center bg-white border border-gray-200 text-gray-600 text-sm rounded-lg p-2.5 w-full cursor-not-allowed opacity-60">
-                   <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                   <span className="font-bold">Real-time Range</span>
-                   <ChevronDown className="w-4 h-4 text-gray-500 ml-auto" />
+             {/* Date Range Filter */}
+             <div className="w-full lg:flex-1 grid grid-cols-2 gap-3">
+               <div>
+                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">From Date</label>
+                 <div className="relative">
+                   <Calendar className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                   <input 
+                     type="date"
+                     value={startDate}
+                     onChange={(e) => setStartDate(e.target.value)}
+                     className="bg-gray-50/50 border border-gray-200 text-gray-700 text-[11px] font-bold rounded-lg focus:ring-2 focus:ring-red-500/20 focus:border-red-500 block w-full pl-9 p-2.5 outline-none transition-all cursor-pointer"
+                   />
+                 </div>
+               </div>
+               <div>
+                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">To Date</label>
+                 <div className="relative">
+                   <Calendar className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                   <input 
+                     type="date"
+                     value={endDate}
+                     onChange={(e) => setEndDate(e.target.value)}
+                     className="bg-gray-50/50 border border-gray-200 text-gray-700 text-[11px] font-bold rounded-lg focus:ring-2 focus:ring-red-500/20 focus:border-red-500 block w-full pl-9 p-2.5 outline-none transition-all cursor-pointer"
+                   />
                  </div>
                </div>
              </div>
@@ -128,11 +178,30 @@ export default function ComplaintQueuePage() {
             <tbody className="bg-white">
               {loading ? (
                  <tr>
-                   <td colSpan={7} className="p-8 text-center text-gray-500">Loading live data...</td>
+                   <td colSpan={7} className="p-12 text-center">
+                     <div className="flex flex-col items-center gap-3">
+                        <div className="w-8 h-8 border-4 border-red-600/20 border-t-red-600 rounded-full animate-spin"></div>
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Loading live data...</span>
+                     </div>
+                   </td>
                  </tr>
               ) : filteredComplaints.length === 0 ? (
                  <tr>
-                   <td colSpan={7} className="p-8 text-center text-gray-500">No complaints found.</td>
+                   <td colSpan={7} className="p-20 text-center">
+                      <div className="flex flex-col items-center gap-4 text-gray-400 opacity-50">
+                        <ListIcon className="w-12 h-12" />
+                        <div>
+                          <p className="text-sm font-bold uppercase tracking-widest leading-none">No records match criteria</p>
+                          <p className="text-[10px] font-bold uppercase mt-2">Try adjusting your filters or date range</p>
+                        </div>
+                        <button 
+                          onClick={resetFilters}
+                          className="mt-2 text-[10px] font-bold text-red-600 underline uppercase tracking-widest"
+                        >
+                          Clear all filters
+                        </button>
+                      </div>
+                   </td>
                  </tr>
               ) : (
                 filteredComplaints.map((c) => {
@@ -207,12 +276,12 @@ export default function ComplaintQueuePage() {
           </table>
         </div>
         
-        {/* Pagination mock */}
+        {/* Pagination Footer */}
         <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-between items-center text-sm text-gray-500">
-             <span>Showing {filteredComplaints.length} records</span>
+             <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Records: {filteredComplaints.length}</span>
              <div className="flex gap-2">
-                <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">Previous</button>
-                <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">Next</button>
+                <button className="px-4 py-1.5 text-[10px] font-bold border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition-all uppercase tracking-widest">Previous</button>
+                <button className="px-4 py-1.5 text-[10px] font-bold border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition-all uppercase tracking-widest">Next</button>
              </div>
         </div>
 
