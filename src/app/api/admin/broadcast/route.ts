@@ -7,12 +7,66 @@ async function getWaConfig() {
   return snap.exists() ? snap.val() : null;
 }
 
-async function sendWhatsAppMessage(to: string, body: string, config: any) {
+async function sendWhatsAppMessage(
+  to: string, 
+  body: string, 
+  config: any, 
+  mediaFiles: { url: string, type: string }[],
+  audio?: { url: string, type: string }
+) {
   if (!config || !config.accessToken || !config.phoneNumberId) return;
+  const url = `https://graph.facebook.com/v20.0/${config.phoneNumberId}/messages`;
+  const cleanTo = to.replace(/[^0-9]/g, '');
+
   try {
-    const url = `https://graph.facebook.com/v20.0/${config.phoneNumberId}/messages`;
-    const cleanTo = to.replace(/[^0-9]/g, '');
-    
+    // 1. Send each General Attachment
+    for (const media of mediaFiles) {
+      if (media.url) {
+        let type = 'document';
+        if (media.type.startsWith('image/')) type = 'image';
+        else if (media.type.startsWith('audio/')) type = 'audio';
+        else if (media.type.startsWith('video/')) type = 'video';
+
+        const payload: any = {
+          messaging_product: 'whatsapp',
+          to: cleanTo,
+          type: type,
+          [type]: { link: media.url }
+        };
+
+        if (type === 'document') {
+          payload.document.filename = media.url.split('/').pop() || 'attachment';
+        }
+
+        await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${config.accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+    }
+
+    // 2. Send Optional Audio Message
+    if (audio && audio.url) {
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: cleanTo,
+          type: 'audio',
+          audio: { link: audio.url }
+        })
+      });
+    }
+
+    // 3. Send Text Body
     await fetch(url, {
       method: 'POST',
       headers: {
@@ -33,7 +87,7 @@ async function sendWhatsAppMessage(to: string, body: string, config: any) {
 
 export async function POST(req: Request) {
   try {
-    const { title, message } = await req.json();
+    const { title, message, attachments, audio } = await req.json();
     if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
 
     const config = await getWaConfig();
@@ -49,16 +103,23 @@ export async function POST(req: Request) {
     await push(ref(db, 'announcements'), {
        title,
        message,
+       attachments: attachments || [],
+       audio: audio || null,
        recipientCount: phoneNumbers.length,
        createdAt: serverTimestamp()
     });
 
-    // Send messages (async)
-    // For small number of users, this is ok. For thousands, push to a queue.
-    const promises = phoneNumbers.map(phone => sendWhatsAppMessage(phone, `📢 *${title || 'Announcement'}*\n\n${message}`, config));
+    // Send messages (async loop)
+    const promises = phoneNumbers.map(phone => 
+      sendWhatsAppMessage(
+        phone, 
+        `📢 *${title || 'Announcement'}*\n\n${message}`, 
+        config,
+        attachments || [],
+        audio || undefined
+      )
+    );
     
-    // We don't necessarily need to wait for all if it's very large, 
-    // but for now we'll wait 
     await Promise.all(promises);
 
     return NextResponse.json({ success: true, count: phoneNumbers.length });
