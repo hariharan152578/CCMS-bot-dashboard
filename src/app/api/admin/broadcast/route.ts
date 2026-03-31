@@ -23,9 +23,10 @@ async function sendWhatsAppMessage(
     for (const media of mediaFiles) {
       if (media.url) {
         let type = 'document';
-        if (media.type.startsWith('image/')) type = 'image';
-        else if (media.type.startsWith('audio/')) type = 'audio';
-        else if (media.type.startsWith('video/')) type = 'video';
+        const mType = media.type.toLowerCase();
+        if (mType === 'image' || mType.startsWith('image/')) type = 'image';
+        else if (mType === 'audio' || mType.startsWith('audio/')) type = 'audio';
+        else if (mType === 'video' || mType.startsWith('video/')) type = 'video';
 
         const payload: any = {
           messaging_product: 'whatsapp',
